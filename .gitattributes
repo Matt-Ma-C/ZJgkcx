@@ -1,0 +1,7 @@
+* text=auto
+
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Large generated dataset: keep it versioned but avoid noisy GitHub diffs.
+public/data/jobs.json -diff linguist-generated=true
