@@ -33,8 +33,27 @@ curl -I http://127.0.0.1:3000/
 
 ## 备案通过后开放网站
 
-确认 ICP 备案已通过、域名 A 记录已指向服务器公网 IP，且阿里云安全组已放行
-TCP 80/443 后，再安装 Nginx 并启用 `deploy/nginx-zjgkcx.conf`。随后使用
-Certbot 为域名签发 HTTPS 证书。
+应用部署完成后，可以提前安装 Nginx 和 Certbot：
 
-备案审核期间不要启用该 Nginx 站点，也不要将 Node.js 的 3000 端口开放到公网。
+```bash
+bash /srv/zjgkcx/current/deploy/stage-nginx-ubuntu.sh
+```
+
+该脚本只启用 `127.0.0.1:8080`，并把公网配置暂存在
+`/etc/nginx/sites-available/zjgkcx-public`，不会监听公网 80/443。
+
+确认 ICP 备案已通过、`www.zjgkcx.top` 的 A 记录已指向服务器公网 IP，
+且阿里云安全组已放行 TCP 80/443 后，执行：
+
+```bash
+bash /srv/zjgkcx/current/deploy/publish-after-icp.sh \
+  --confirm-icp \
+  --email "你的证书通知邮箱"
+```
+
+发布脚本会再次校验域名解析和应用状态，启用公网 Nginx 配置，并通过
+Certbot 签发证书、强制跳转 HTTPS。任一步骤失败时会撤回本次新增的公网
+站点链接。
+
+备案审核期间不要手动启用公网 Nginx 站点，也不要将 Node.js 的 3000
+端口开放到公网。原有 SSH 隧道访问方式不受影响。
