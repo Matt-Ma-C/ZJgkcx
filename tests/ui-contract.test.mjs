@@ -11,6 +11,10 @@ const analyzeRoute = await readFile(
   new URL("../app/api/analyze/route.ts", import.meta.url),
   "utf8",
 );
+const analyticsWorker = await readFile(
+  new URL("../app/analytics-worker.ts", import.meta.url),
+  "utf8",
+);
 const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
@@ -38,22 +42,25 @@ test("Markdown 导出包含考情字段和成绩分布", () => {
   assert.match(page, /P25/);
   assert.match(page, /中位/);
   assert.match(page, /P75/);
-  assert.match(page, /buildJobsMarkdown\(availableJobs, applied\)/);
+  assert.match(page, /buildJobsMarkdown\(availableJobs, applied, jobMetrics\)/);
+  assert.match(page, /历史难度与可信度/);
 });
 
 test("DeepSeek 分析在本地校验空岗位、Key 和岗位上限", () => {
   assert.match(page, /当前没有未隐藏的岗位，不会发起 API 调用/);
   assert.match(page, /请先输入 DeepSeek API Key/);
-  assert.match(page, /ANALYSIS_JOB_LIMIT = 1000/);
+  assert.match(page, /ANALYSIS_JOB_LIMIT = 15_000/);
   assert.doesNotMatch(page, /localStorage|sessionStorage/);
   assert.match(analyzeRoute, /没有可供分析的岗位信息/);
-  assert.match(analyzeRoute, /MAX_JOB_COUNT = 1000/);
+  assert.match(analyzeRoute, /MAX_JOB_COUNT = 15_000/);
+  assert.match(analyzeRoute, /RATE_LIMIT_REQUESTS = 8/);
 });
 
 test("DeepSeek 使用当前模型和考情分析系统提示词", () => {
   assert.match(analyzeRoute, /deepseek-v4-flash/);
   assert.match(analyzeRoute, /限男性\/适合男性/);
-  assert.match(analyzeRoute, /少于 5 必须标“小样本，仅供观察”/);
+  assert.match(analyzeRoute, /程序预计算的考情分析数据/);
+  assert.match(analyzeRoute, /不得从代表性岗位重新估算/);
   assert.match(analyzeRoute, /Authorization: `Bearer \$\{apiKey\}`/);
   assert.doesNotMatch(analyzeRoute, /sk-[A-Za-z0-9]{20,}/);
 });
@@ -87,7 +94,8 @@ test("单个岗位可隐藏、恢复且不参与导出和分析", () => {
   assert.match(page, /取消隐藏/);
   assert.match(page, /className=\{hiddenJobIds\.has\(job\.id\) \? "is-hidden-job"/);
   assert.match(page, /filteredJobs\.filter\(\(job\) => !hiddenJobIds\.has\(job\.id\)\)/);
-  assert.match(page, /buildJobsMarkdown\(analysisJobs, applied\)/);
+  assert.match(page, /formatAnalyticsContext\(/);
+  assert.match(page, /analysisJobs\.map\(\(job\) => toAnalyticsJob\(job, true\)\)/);
   assert.match(styles, /\.job-table tbody tr\.is-hidden-job/);
 });
 
@@ -108,4 +116,19 @@ test("选岗分析结果使用 GFM Markdown 渲染器", () => {
   assert.ok(packageJson.dependencies["remark-gfm"]);
   assert.match(styles, /\.markdown-body table/);
   assert.match(styles, /\.markdown-body blockquote/);
+});
+
+test("系统将硬性资格与策略偏好分层，并提供本地量化分析", () => {
+  assert.match(page, />硬性资格</);
+  assert.match(page, />策略偏好</);
+  assert.match(page, /const eligibleJobs = useMemo/);
+  assert.match(page, /new Worker\(new URL\("\.\/analytics-worker\.ts"/);
+  assert.match(analyticsWorker, /analyzeSelection\(eligibleJobs, currentJobs, metrics\)/);
+  assert.match(page, /本地考情分析/);
+  assert.match(page, /筛选条件影响因子/);
+  assert.match(page, /更有利的策略组合/);
+  assert.match(page, /历史难度指数/);
+  assert.match(page, /按此组合筛选/);
+  assert.match(styles, /\.analytics-summary-grid/);
+  assert.match(styles, /\.recommendation-grid/);
 });

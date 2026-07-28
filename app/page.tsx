@@ -3,6 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  formatAnalyticsContext,
+  type AnalyticsJob,
+  type CombinationRecommendation,
+  type JobMetric,
+  type SelectionAnalytics,
+} from "./analytics";
 
 type Person = {
   name: string;
@@ -104,10 +111,12 @@ type MultiFilterKey =
   | "year"
   | "district"
   | "education"
+  | "degree"
   | "identity"
   | "political"
   | "ethnicity"
   | "age"
+  | "bigCategory"
   | "psychologicalTest"
   | "physicalTest"
   | "professionalTest";
@@ -116,26 +125,69 @@ type Filters = Record<MultiFilterKey, string[]> & {
   city: string;
   majors: string;
   notes: string;
+  policeScope: "all" | "only" | "exclude";
 };
 
 const createEmptyFilters = (): Filters => ({
   year: [],
   district: [],
   education: [],
+  degree: [],
   identity: [],
   political: [],
   ethnicity: [],
   age: [],
+  bigCategory: [],
   psychologicalTest: [],
   physicalTest: [],
   professionalTest: [],
   city: "",
   majors: "",
   notes: "",
+  policeScope: "all",
 });
 
 const PAGE_SIZE = 20;
-const ANALYSIS_JOB_LIMIT = 1000;
+const ANALYSIS_JOB_LIMIT = 15_000;
+
+const emptySummary: SelectionAnalytics["eligible"] = {
+  jobCount: 0,
+  hires: 0,
+  paymentCoverage: 0,
+  scoreCoverage: 0,
+  interviewCoverage: 0,
+  admissionCoverage: 0,
+  medianRatio: null,
+  medianScore: null,
+  medianDifficulty: null,
+  highConfidenceJobs: 0,
+};
+
+const createEmptyAnalytics = (): SelectionAnalytics => ({
+  eligible: { ...emptySummary },
+  current: { ...emptySummary },
+  factorImpacts: [],
+  recommendations: [],
+});
+
+function toAnalyticsJob(job: Job, includeScoreDistribution = false): AnalyticsJob {
+  const { interviewees, admitted, ...fields } = job;
+  return {
+    ...fields,
+    intervieweeCount: interviewees.length,
+    admittedCount: admitted.length,
+    ...(includeScoreDistribution
+      ? {
+          writtenScoreSummary: scoreDistribution(
+            interviewees.map((person) => person.writtenScore),
+          ),
+          interviewScoreSummary: scoreDistribution(
+            interviewees.map((person) => person.interviewScore),
+          ),
+        }
+      : {}),
+  };
+}
 
 function formatValue(value: string | number | null | undefined) {
   return value === null || value === undefined || value === "" ? "—" : String(value);
@@ -160,6 +212,16 @@ function isPoliceJob(job: Job) {
 
 function formatScore(value: number) {
   return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(2).replace(/0+$/, "");
+}
+
+function formatPercent(value: number) {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function formatDelta(value: number | null, suffix = "") {
+  if (value === null) return "—";
+  const formatted = Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
+  return `${value > 0 ? "+" : ""}${formatted}${suffix}`;
 }
 
 function percentile(sortedValues: number[], fraction: number) {
@@ -203,13 +265,23 @@ function summarizeFilters(filters: Filters) {
     ["设区市", filters.city],
     ["区县", filters.district],
     ["学历", filters.education],
+    ["学位", filters.degree],
     ["现有身份", filters.identity],
     ["政治面貌", filters.political],
     ["民族", filters.ethnicity],
     ["年龄", filters.age],
+    ["考试类别", filters.bigCategory],
     ["心理测评", filters.psychologicalTest],
     ["体能测试", filters.physicalTest],
     ["专业加试", filters.professionalTest],
+    [
+      "公安岗位",
+      filters.policeScope === "only"
+        ? "仅公安岗位"
+        : filters.policeScope === "exclude"
+          ? "排除公安岗位"
+          : "",
+    ],
     ["专业关键词", filters.majors],
     ["备注关键词", filters.notes],
   ];
@@ -222,7 +294,11 @@ function summarizeFilters(filters: Filters) {
   return active.length ? active.join("；") : "未设置筛选条件（全部岗位）";
 }
 
-function buildJobsMarkdown(jobs: Job[], filters: Filters) {
+function buildJobsMarkdown(
+  jobs: Job[],
+  filters: Filters,
+  metrics?: Map<string, JobMetric>,
+) {
   const generatedAt = new Date().toLocaleString("zh-CN", { hour12: false });
   const rows = jobs.map((job) => {
     const region =
@@ -245,7 +321,11 @@ function buildJobsMarkdown(jobs: Job[], filters: Filters) {
       `笔试：${scoreDistribution(job.interviewees.map((person) => person.writtenScore))}`,
       `面试：${scoreDistribution(job.interviewees.map((person) => person.interviewScore))}`,
     ].join("<br>");
-    return `| ${job.year} | ${escapeMarkdown(region)} | ${escapeMarkdown(unitAndPosition)} | ${escapeMarkdown(requirements)} | ${job.hires} | ${escapeMarkdown(job.paymentCount)} | ${escapeMarkdown(formatRatio(job.reportRatio))} | ${escapeMarkdown(job.minimumWrittenScore)} | ${escapeMarkdown(distribution)} |`;
+    const metric = metrics?.get(job.id);
+    const difficulty = metric
+      ? `${metric.difficultyBand}（${metric.difficultyScore ?? "—"}；可信度${metric.confidence}）`
+      : "—";
+    return `| ${job.year} | ${escapeMarkdown(region)} | ${escapeMarkdown(unitAndPosition)} | ${escapeMarkdown(requirements)} | ${job.hires} | ${escapeMarkdown(job.paymentCount)} | ${escapeMarkdown(formatRatio(job.reportRatio))} | ${escapeMarkdown(job.minimumWrittenScore)} | ${escapeMarkdown(difficulty)} | ${escapeMarkdown(distribution)} |`;
   });
 
   return `# 浙江公务员岗位考情数据
@@ -256,8 +336,8 @@ function buildJobsMarkdown(jobs: Job[], filters: Filters) {
 - 口径说明：报录比 = 缴费人数 ÷ 招录人数；成绩分布基于该岗位已关联的面试人员记录。
 - 使用建议：可将本文提供给大模型，要求比较地区、资格限制、备注限制、报录比和进面分数，并关注样本量与数据缺失。
 
-| 年度 | 地区 | 招录单位与职位 | 核心要求与备注 | 招录 | 缴费 | 报录比 | 最低进面分 | 参加面试人员的笔试和面试成绩分布 |
-| --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- |
+| 年度 | 地区 | 招录单位与职位 | 核心要求与备注 | 招录 | 缴费 | 报录比 | 最低进面分 | 历史难度与可信度 | 参加面试人员的笔试和面试成绩分布 |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | --- | --- |
 ${rows.join("\n")}
 `;
 }
@@ -353,7 +433,15 @@ function MultiSelectField({
   );
 }
 
-function DetailDrawer({ job, onClose }: { job: Job; onClose: () => void }) {
+function DetailDrawer({
+  job,
+  metric,
+  onClose,
+}: {
+  job: Job;
+  metric?: JobMetric;
+  onClose: () => void;
+}) {
   const admittedTickets = useMemo(
     () => new Set(job.admitted.map((person) => person.ticket)),
     [job.admitted],
@@ -460,6 +548,13 @@ function DetailDrawer({ job, onClose }: { job: Job; onClose: () => void }) {
               <span>进面人数</span>
               <strong>{job.interviewees.length}</strong>
               <small>人</small>
+            </div>
+            <div>
+              <span>历史难度</span>
+              <strong>{metric?.difficultyScore ?? "—"}</strong>
+              <small>
+                {metric?.difficultyBand ?? "暂无判断"} · {metric?.confidence ?? "数据不足"}
+              </small>
             </div>
           </section>
 
@@ -619,6 +714,15 @@ export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [hiddenJobIds, setHiddenJobIds] = useState<Set<string>>(() => new Set());
   const [considerPoliceJobs, setConsiderPoliceJobs] = useState(true);
+  const [jobMetrics, setJobMetrics] = useState<Map<string, JobMetric>>(
+    () => new Map(),
+  );
+  const [selectionAnalytics, setSelectionAnalytics] =
+    useState<SelectionAnalytics>(createEmptyAnalytics);
+  const [isLocalAnalysisLoading, setIsLocalAnalysisLoading] = useState(false);
+  const [localAnalysisError, setLocalAnalysisError] = useState("");
+  const analyticsWorkerRef = useRef<Worker | null>(null);
+  const analyticsRequestId = useRef(0);
 
   useEffect(() => {
     fetch("/data/jobs.json")
@@ -630,6 +734,53 @@ export default function Home() {
       .catch((error: Error) => setLoadError(error.message));
   }, []);
 
+  useEffect(() => {
+    if (!data) return;
+    const worker = new Worker(new URL("./analytics-worker.ts", import.meta.url), {
+      type: "module",
+    });
+    analyticsWorkerRef.current = worker;
+    worker.onmessage = (
+      event: MessageEvent<
+        | { type: "metrics"; entries: Array<[string, JobMetric]> }
+        | { type: "started"; requestId: number }
+        | {
+            type: "analysis";
+            requestId: number;
+            analytics: SelectionAnalytics;
+          }
+      >,
+    ) => {
+      if (event.data.type === "metrics") {
+        setJobMetrics(new Map(event.data.entries));
+        return;
+      }
+      if (event.data.type === "started") {
+        if (event.data.requestId !== analyticsRequestId.current) return;
+        setIsLocalAnalysisLoading(true);
+        setLocalAnalysisError("");
+        return;
+      }
+      if (event.data.requestId !== analyticsRequestId.current) return;
+      setSelectionAnalytics(event.data.analytics);
+      setIsLocalAnalysisLoading(false);
+    };
+    worker.onerror = () => {
+      setIsLocalAnalysisLoading(false);
+      setLocalAnalysisError(
+        "本地统计计算未能完成。岗位查询仍可使用，请刷新页面后重试。",
+      );
+    };
+    worker.postMessage({
+      type: "init",
+      jobs: data.jobs.map(toAnalyticsJob),
+    });
+    return () => {
+      worker.terminate();
+      analyticsWorkerRef.current = null;
+    };
+  }, [data]);
+
   const updateMulti = (key: MultiFilterKey, values: string[]) => {
     setDraft((current) => ({ ...current, [key]: values }));
   };
@@ -637,25 +788,60 @@ export default function Home() {
   const matchMulti = (selectedValues: string[], value: string | number) =>
     selectedValues.length === 0 || selectedValues.includes(String(value));
 
-  const filteredJobs = useMemo(() => {
+  const degreeOptions = useMemo(
+    () =>
+      data
+        ? [...new Set(data.jobs.map((job) => job.degree).filter(Boolean))].sort(
+            (a, b) => a.localeCompare(b, "zh-CN"),
+          )
+        : [],
+    [data],
+  );
+
+  const bigCategoryOptions = useMemo(
+    () =>
+      data
+        ? [
+            ...new Set(
+              data.jobs
+                .map((job) => job.bigCategory || job.jobProperty)
+                .filter(Boolean),
+            ),
+          ].sort((a, b) => a.localeCompare(b, "zh-CN"))
+        : [],
+    [data],
+  );
+
+  const eligibleJobs = useMemo(() => {
     if (!data) return [];
     const majorKeyword = applied.majors.trim().toLowerCase();
-    const noteKeyword = applied.notes.trim().toLowerCase();
-    const matches = data.jobs.filter(
+    return data.jobs.filter(
       (job) =>
         matchMulti(applied.year, job.year) &&
-        (!applied.city || applied.city === job.city) &&
-        matchMulti(applied.district, job.district) &&
         matchMulti(applied.education, job.education) &&
+        matchMulti(applied.degree, job.degree) &&
         matchMulti(applied.identity, job.identity) &&
         matchMulti(applied.political, job.political) &&
         matchMulti(applied.ethnicity, job.ethnicity) &&
         matchMulti(applied.age, job.age) &&
+        (!majorKeyword || job.majors.toLowerCase().includes(majorKeyword)),
+    );
+  }, [applied, data]);
+
+  const filteredJobs = useMemo(() => {
+    const noteKeyword = applied.notes.trim().toLowerCase();
+    const matches = eligibleJobs.filter(
+      (job) =>
+        (!applied.city || applied.city === job.city) &&
+        matchMulti(applied.district, job.district) &&
+        matchMulti(applied.bigCategory, job.bigCategory || job.jobProperty) &&
         matchMulti(applied.psychologicalTest, job.psychologicalTest) &&
         matchMulti(applied.physicalTest, job.physicalTest) &&
         matchMulti(applied.professionalTest, job.professionalTest) &&
-        (!majorKeyword || job.majors.toLowerCase().includes(majorKeyword)) &&
-        (!noteKeyword || job.notes.toLowerCase().includes(noteKeyword)),
+        (!noteKeyword || job.notes.toLowerCase().includes(noteKeyword)) &&
+        (applied.policeScope === "all" ||
+          (applied.policeScope === "only" && isPoliceJob(job)) ||
+          (applied.policeScope === "exclude" && !isPoliceJob(job))),
     );
 
     if (sort === "ratio-desc") {
@@ -675,17 +861,32 @@ export default function Home() {
         (a, b) => (b.minimumWrittenScore ?? -1) - (a.minimumWrittenScore ?? -1),
       );
     }
+    if (sort === "difficulty-asc") {
+      return [...matches].sort(
+        (a, b) =>
+          (jobMetrics.get(a.id)?.difficultyScore ?? 101) -
+          (jobMetrics.get(b.id)?.difficultyScore ?? 101),
+      );
+    }
     if (sort === "hires-desc") {
       return [...matches].sort((a, b) => b.hires - a.hires);
     }
     return matches;
-  }, [applied, data, sort]);
+  }, [applied, eligibleJobs, jobMetrics, sort]);
 
   const availableJobs = useMemo(
     () => filteredJobs.filter((job) => !hiddenJobIds.has(job.id)),
     [filteredJobs, hiddenJobIds],
   );
   const hiddenFilteredCount = filteredJobs.length - availableJobs.length;
+  const analyticsEligibleJobs = useMemo(
+    () =>
+      eligibleJobs.filter(
+        (job) =>
+          !hiddenJobIds.has(job.id) && (considerPoliceJobs || !isPoliceJob(job)),
+      ),
+    [considerPoliceJobs, eligibleJobs, hiddenJobIds],
+  );
   const analysisJobs = useMemo(
     () =>
       considerPoliceJobs
@@ -694,16 +895,57 @@ export default function Home() {
     [availableJobs, considerPoliceJobs],
   );
   const excludedPoliceCount = availableJobs.length - analysisJobs.length;
+  useEffect(() => {
+    const worker = analyticsWorkerRef.current;
+    if (!worker) return;
+    analyticsRequestId.current += 1;
+    const requestId = analyticsRequestId.current;
+    worker.postMessage({
+      type: "analyze",
+      requestId,
+      eligibleIds: analyticsEligibleJobs.map((job) => job.id),
+      currentIds: analysisJobs.map((job) => job.id),
+    });
+  }, [analysisJobs, analyticsEligibleJobs]);
+  const displayedFactorImpacts = useMemo(() => {
+    const preferredDimensions = [
+      "政治面貌",
+      "学历要求",
+      "学位要求",
+      "现有身份",
+      "民族要求",
+      "年龄要求",
+      "专业门类",
+      "心理测评",
+      "体能测试",
+      "专业加试",
+      "备注限制",
+    ];
+    const selected = selectionAnalytics.factorImpacts.slice(0, 14);
+    const ids = new Set(selected.map((impact) => impact.id));
+    for (const dimension of preferredDimensions) {
+      const representative = selectionAnalytics.factorImpacts.find(
+        (impact) => impact.dimension === dimension && !ids.has(impact.id),
+      );
+      if (representative) {
+        selected.push(representative);
+        ids.add(representative.id);
+      }
+    }
+    return selected.slice(0, 22);
+  }, [selectionAnalytics.factorImpacts]);
   const totalPages = Math.max(1, Math.ceil(filteredJobs.length / PAGE_SIZE));
   const visibleJobs = filteredJobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const multiKeys: MultiFilterKey[] = [
     "year",
     "district",
     "education",
+    "degree",
     "identity",
     "political",
     "ethnicity",
     "age",
+    "bigCategory",
     "psychologicalTest",
     "physicalTest",
     "professionalTest",
@@ -712,7 +954,8 @@ export default function Home() {
     multiKeys.reduce((total, key) => total + applied[key].length, 0) +
     (applied.city ? 1 : 0) +
     (applied.majors ? 1 : 0) +
-    (applied.notes ? 1 : 0);
+    (applied.notes ? 1 : 0) +
+    (applied.policeScope !== "all" ? 1 : 0);
 
   const applyFilters = () => {
     setApplied({ ...draft });
@@ -761,9 +1004,40 @@ export default function Home() {
     setAnalysisModel("");
   };
 
+  const applyRecommendation = (recommendation: CombinationRecommendation) => {
+    const next: Filters = {
+      ...applied,
+      city: "",
+      district: [],
+      bigCategory: [],
+      psychologicalTest: [],
+      physicalTest: [],
+      professionalTest: [],
+      notes: "",
+      policeScope: "all",
+    };
+    for (const filter of recommendation.applyFilters) {
+      if (filter.key === "city") {
+        next.city = filter.value;
+        next.district = [];
+      } else if (filter.key === "policeScope") {
+        next.policeScope = filter.value as Filters["policeScope"];
+      } else {
+        next[filter.key] = [filter.value];
+      }
+    }
+    setDraft(next);
+    setApplied(next);
+    setPage(1);
+    setAnalysis("");
+    setAnalysisError("");
+    setAnalysisModel("");
+    document.getElementById("results-title")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   const exportMarkdown = () => {
     if (!availableJobs.length) return;
-    const markdown = buildJobsMarkdown(availableJobs, applied);
+    const markdown = buildJobsMarkdown(availableJobs, applied, jobMetrics);
     const blob = new Blob(["\uFEFF", markdown], {
       type: "text/markdown;charset=utf-8",
     });
@@ -780,6 +1054,11 @@ export default function Home() {
 
   const analyzeWithDeepSeek = async () => {
     setAnalysisError("");
+    if (isLocalAnalysisLoading) {
+      setAnalysis("");
+      setAnalysisError("本地考情统计仍在计算，请完成后再发起 AI 分析。");
+      return;
+    }
     if (!analysisJobs.length) {
       setAnalysis("");
       setAnalysisError(
@@ -811,7 +1090,13 @@ export default function Home() {
         body: JSON.stringify({
           apiKey: apiKey.trim(),
           jobCount: analysisJobs.length,
-          jobMarkdown: buildJobsMarkdown(analysisJobs, applied),
+          jobMarkdown:
+            `# 用户当前条件\n\n${summarizeFilters(applied)}\n\n` +
+            formatAnalyticsContext(
+              selectionAnalytics,
+              analysisJobs.map((job) => toAnalyticsJob(job, true)),
+              jobMetrics,
+            ),
           considerPoliceJobs,
         }),
       });
@@ -904,7 +1189,7 @@ export default function Home() {
               <span className="panel-index">01</span>
               <div>
                 <h2 id="filter-title">筛选报考条件</h2>
-                <p>设区市单选，区县及其他下拉条件支持多选</p>
+                <p>先确定硬性资格，再用策略偏好缩小范围</p>
               </div>
             </div>
             {activeFilterCount > 0 && (
@@ -913,12 +1198,71 @@ export default function Home() {
           </div>
 
           <div className="filter-grid">
+            <div className="filter-group-title">
+              <strong>分析范围</strong>
+              <span>建议保留多个年度，便于检验条件影响是否稳定</span>
+            </div>
             <MultiSelectField
               label="年度"
               values={draft.year}
               options={data.options.years}
               onChange={(values) => updateMulti("year", values)}
             />
+            <div className="filter-group-title">
+              <strong>硬性资格</strong>
+              <span>用于形成真正可报的岗位池，系统不会建议伪造或改变这些条件</span>
+            </div>
+            <MultiSelectField
+              label="学历要求"
+              values={draft.education}
+              options={data.options.education}
+              onChange={(values) => updateMulti("education", values)}
+            />
+            <MultiSelectField
+              label="学位要求"
+              values={draft.degree}
+              options={degreeOptions}
+              onChange={(values) => updateMulti("degree", values)}
+            />
+            <MultiSelectField
+              label="现有身份要求"
+              values={draft.identity}
+              options={data.options.identity}
+              onChange={(values) => updateMulti("identity", values)}
+            />
+            <MultiSelectField
+              label="政治面貌要求"
+              values={draft.political}
+              options={data.options.political}
+              onChange={(values) => updateMulti("political", values)}
+            />
+            <MultiSelectField
+              label="民族要求"
+              values={draft.ethnicity}
+              options={data.options.ethnicity}
+              onChange={(values) => updateMulti("ethnicity", values)}
+            />
+            <MultiSelectField
+              label="年龄要求"
+              values={draft.age}
+              options={data.options.age}
+              onChange={(values) => updateMulti("age", values)}
+            />
+            <label className="field keyword-field">
+              <span>本人专业关键词</span>
+              <input
+                value={draft.majors}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, majors: event.target.value }))
+                }
+                placeholder="例如：法学、计算机、会计"
+                onKeyDown={(event) => event.key === "Enter" && applyFilters()}
+              />
+            </label>
+            <div className="filter-group-title">
+              <strong>策略偏好</strong>
+              <span>系统将在可报岗位池内比较这些可选择条件，寻找更有利组合</span>
+            </div>
             <label className="field">
               <span>设区市（单选）</span>
               <select
@@ -950,34 +1294,10 @@ export default function Home() {
               emptyText={draft.city ? "全部区县" : "请先选择设区市"}
             />
             <MultiSelectField
-              label="学历要求"
-              values={draft.education}
-              options={data.options.education}
-              onChange={(values) => updateMulti("education", values)}
-            />
-            <MultiSelectField
-              label="现有身份要求"
-              values={draft.identity}
-              options={data.options.identity}
-              onChange={(values) => updateMulti("identity", values)}
-            />
-            <MultiSelectField
-              label="政治面貌要求"
-              values={draft.political}
-              options={data.options.political}
-              onChange={(values) => updateMulti("political", values)}
-            />
-            <MultiSelectField
-              label="民族要求"
-              values={draft.ethnicity}
-              options={data.options.ethnicity}
-              onChange={(values) => updateMulti("ethnicity", values)}
-            />
-            <MultiSelectField
-              label="年龄要求"
-              values={draft.age}
-              options={data.options.age}
-              onChange={(values) => updateMulti("age", values)}
+              label="考试类别"
+              values={draft.bigCategory}
+              options={bigCategoryOptions}
+              onChange={(values) => updateMulti("bigCategory", values)}
             />
             <MultiSelectField
               label="心理测评"
@@ -997,16 +1317,21 @@ export default function Home() {
               options={data.options.professionalTest}
               onChange={(values) => updateMulti("professionalTest", values)}
             />
-            <label className="field keyword-field">
-              <span>专业要求关键词</span>
-              <input
-                value={draft.majors}
+            <label className="field">
+              <span>公安岗位范围</span>
+              <select
+                value={draft.policeScope}
                 onChange={(event) =>
-                  setDraft((current) => ({ ...current, majors: event.target.value }))
+                  setDraft((current) => ({
+                    ...current,
+                    policeScope: event.target.value as Filters["policeScope"],
+                  }))
                 }
-                placeholder="例如：法学、计算机、会计"
-                onKeyDown={(event) => event.key === "Enter" && applyFilters()}
-              />
+              >
+                <option value="all">全部岗位</option>
+                <option value="only">仅公安及警察岗位</option>
+                <option value="exclude">排除公安及警察岗位</option>
+              </select>
             </label>
             <label className="field keyword-field">
               <span>备注关键词</span>
@@ -1038,7 +1363,8 @@ export default function Home() {
               <div>
                 <h2 id="results-title">岗位查询结果</h2>
                 <p>
-                  共找到 <strong>{filteredJobs.length}</strong> 个岗位，可用于导出和分析{" "}
+                  硬性资格可报 <strong>{eligibleJobs.length}</strong> 个，当前偏好找到{" "}
+                  <strong>{filteredJobs.length}</strong> 个；可用于导出和分析{" "}
                   <strong>{availableJobs.length}</strong> 个
                   {hiddenFilteredCount > 0 && `，已隐藏 ${hiddenFilteredCount} 个`}
                 </p>
@@ -1069,6 +1395,7 @@ export default function Home() {
                   <option value="default">年度 / 区划</option>
                   <option value="ratio-desc">报录比从高到低</option>
                   <option value="ratio-asc">报录比从低到高</option>
+                  <option value="difficulty-asc">历史难度从低到高</option>
                   <option value="score-desc">最低进面分从高到低</option>
                   <option value="hires-desc">招录人数从多到少</option>
                 </select>
@@ -1089,6 +1416,7 @@ export default function Home() {
                       <th>缴费</th>
                       <th>报录比</th>
                       <th>最低进面分</th>
+                      <th>历史难度</th>
                       <th aria-label="操作" />
                     </tr>
                   </thead>
@@ -1144,6 +1472,15 @@ export default function Home() {
                             {formatValue(job.minimumWrittenScore)}
                           </strong>
                           <small>笔试成绩</small>
+                        </td>
+                        <td data-label="历史难度">
+                          <strong className="difficulty-cell">
+                            {jobMetrics.get(job.id)?.difficultyScore ?? "—"}
+                          </strong>
+                          <small>
+                            {jobMetrics.get(job.id)?.difficultyBand ?? "暂无判断"} ·{" "}
+                            {jobMetrics.get(job.id)?.confidence ?? "数据不足"}
+                          </small>
                         </td>
                         <td>
                           <div className="row-actions">
@@ -1213,14 +1550,214 @@ export default function Home() {
           )}
         </section>
 
-        <section className="analysis-section" aria-labelledby="analysis-title">
+        <section
+          className={`insight-section${isLocalAnalysisLoading ? " is-calculating" : ""}`}
+          aria-labelledby="insight-title"
+          aria-busy={isLocalAnalysisLoading}
+        >
           <div className="analysis-heading">
             <div>
               <span className="panel-index">03</span>
               <div>
+                <h2 id="insight-title">本地考情分析</h2>
+                <p>程序精确计算历史难度、数据覆盖和更有利的策略组合</p>
+              </div>
+            </div>
+            <span className="analysis-count">
+              {isLocalAnalysisLoading
+                ? "正在后台计算…"
+                : `基于 ${analyticsEligibleJobs.length.toLocaleString("zh-CN")} 个可报岗位`}
+            </span>
+          </div>
+
+          {isLocalAnalysisLoading && (
+            <div className="local-analysis-loading">
+              正在重新计算影响因子与条件组合，岗位查询仍可正常使用。
+            </div>
+          )}
+          {localAnalysisError && (
+            <div className="analysis-error local-analysis-error" role="alert">
+              {localAnalysisError}
+            </div>
+          )}
+
+          <div className="analytics-summary-grid">
+            <div>
+              <span>硬性资格可报</span>
+              <strong>{selectionAnalytics.eligible.jobCount.toLocaleString("zh-CN")}</strong>
+              <small>当前偏好剩余 {selectionAnalytics.current.jobCount} 个</small>
+            </div>
+            <div>
+              <span>缴费报录比中位数</span>
+              <strong>{selectionAnalytics.current.medianRatio ?? "—"}</strong>
+              <small>缴费人数 ÷ 招录人数</small>
+            </div>
+            <div>
+              <span>最低进面分中位数</span>
+              <strong>{selectionAnalytics.current.medianScore ?? "—"}</strong>
+              <small>覆盖 {formatPercent(selectionAnalytics.current.scoreCoverage)}</small>
+            </div>
+            <div>
+              <span>历史难度指数</span>
+              <strong>{selectionAnalytics.current.medianDifficulty ?? "—"}</strong>
+              <small>同年度、同考试类别内比较</small>
+            </div>
+            <div>
+              <span>高可信岗位</span>
+              <strong>{selectionAnalytics.current.highConfidenceJobs}</strong>
+              <small>同时具备缴费、分数、面试等数据</small>
+            </div>
+          </div>
+
+          <div className="method-note">
+            <strong>如何理解</strong>
+            <p>
+              历史难度指数为0—100，越低表示同类岗位的历史竞争和分数门槛相对越低。
+              它不是上岸概率；条件影响是历史相关关系，数据缺失不会被当作低难度。
+            </p>
+          </div>
+
+          <div className="insight-block">
+            <div className="insight-block-heading">
+              <div>
+                <h3>筛选条件影响因子</h3>
+                <p>每个分组都与当前可报岗位池内的其余岗位比较</p>
+              </div>
+              <span>按影响幅度排序</span>
+            </div>
+            {selectionAnalytics.factorImpacts.length ? (
+              <div className="factor-table-wrap">
+                <table className="factor-table">
+                  <thead>
+                    <tr>
+                      <th>维度与分组</th>
+                      <th>样本</th>
+                      <th>报录比</th>
+                      <th>最低进面分</th>
+                      <th>难度指数</th>
+                      <th>年度一致性</th>
+                      <th>判断</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedFactorImpacts.map((impact) => (
+                      <tr key={impact.id}>
+                        <td>
+                          <small>{impact.dimension}</small>
+                          <strong>{impact.group}</strong>
+                        </td>
+                        <td>
+                          <strong>{impact.groupCount}</strong>
+                          <small>分数覆盖 {formatPercent(impact.scoreCoverage)}</small>
+                        </td>
+                        <td>
+                          <strong>{impact.medianRatio ?? "—"}</strong>
+                          <small>差值 {formatDelta(impact.ratioDelta)}</small>
+                        </td>
+                        <td>
+                          <strong>{impact.medianScore ?? "—"}</strong>
+                          <small>原始差值 {formatDelta(impact.scoreDelta)}</small>
+                        </td>
+                        <td>
+                          <strong>{impact.medianDifficulty ?? "—"}</strong>
+                          <small>差值 {formatDelta(impact.difficultyDelta)}</small>
+                        </td>
+                        <td>
+                          <strong>
+                            {impact.stableYears}/{impact.observedYears}
+                          </strong>
+                          <small>年度方向较有利</small>
+                        </td>
+                        <td>
+                          <span className={`impact-direction confidence-${impact.confidence}`}>
+                            {impact.direction}
+                          </span>
+                          <small>可信度 {impact.confidence}</small>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="empty-panel">
+                当前可报岗位过少或条件已经固定，暂时无法形成可靠对照。
+              </div>
+            )}
+          </div>
+
+          <div className="insight-block">
+            <div className="insight-block-heading">
+              <div>
+                <h3>更有利的策略组合</h3>
+                <p>只保留具备最低样本量、相对优势和数据覆盖的组合</p>
+              </div>
+              <span>最多展示6组</span>
+            </div>
+            {selectionAnalytics.recommendations.length ? (
+              <div className="recommendation-grid">
+                {selectionAnalytics.recommendations.map((recommendation, index) => {
+                  const canApply =
+                    recommendation.applyFilters.length > 0 &&
+                    recommendation.applyFilters.length === recommendation.factors.length;
+                  return (
+                    <article className="recommendation-card" key={recommendation.id}>
+                      <div className="recommendation-rank">#{index + 1}</div>
+                      <span className={`confidence-badge confidence-${recommendation.confidence}`}>
+                        可信度 {recommendation.confidence}
+                      </span>
+                      <h4>{recommendation.label}</h4>
+                      <div className="recommendation-metrics">
+                        <span>
+                          <b>{recommendation.jobCount}</b>个岗位
+                        </span>
+                        <span>
+                          报录比 <b>{recommendation.medianRatio ?? "—"}</b>
+                        </span>
+                        <span>
+                          进面分 <b>{recommendation.medianScore ?? "—"}</b>
+                        </span>
+                        <span>
+                          难度差 <b>{formatDelta(recommendation.difficultyDelta)}</b>
+                        </span>
+                      </div>
+                      <p>
+                        分数覆盖 {formatPercent(recommendation.scoreCoverage)}；在{" "}
+                        {recommendation.observedYears} 个可比较年度中有{" "}
+                        {recommendation.stableYears} 个年度方向较有利。
+                      </p>
+                      {canApply ? (
+                        <button
+                          className="ghost-button"
+                          onClick={() => applyRecommendation(recommendation)}
+                        >
+                          按此组合筛选
+                        </button>
+                      ) : (
+                        <small className="recommendation-note">
+                          备注类限制需核对本人资格后手动筛选
+                        </small>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="empty-panel">
+                当前范围内没有同时满足样本量和稳定性要求的有利组合，建议放宽地区或测试偏好。
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="analysis-section" aria-labelledby="analysis-title">
+          <div className="analysis-heading">
+            <div>
+              <span className="panel-index">04</span>
+              <div>
                 <h2 id="analysis-title">DeepSeek 选岗分析</h2>
                 <p>
-                  逐项量化地区、学历、身份、政治面貌、专业和加试等条件的历史影响
+                  解读程序预计算的影响因子与条件组合，不再让模型估算统计值
                 </p>
               </div>
             </div>
@@ -1274,9 +1811,13 @@ export default function Home() {
             <button
               className="primary-button analysis-button"
               onClick={analyzeWithDeepSeek}
-              disabled={isAnalyzing}
+              disabled={isAnalyzing || isLocalAnalysisLoading}
             >
-              {isAnalyzing ? "正在分析…" : "开始选岗分析"}
+              {isAnalyzing
+                ? "正在分析…"
+                : isLocalAnalysisLoading
+                  ? "等待本地统计…"
+                  : "开始选岗分析"}
             </button>
           </div>
 
@@ -1338,7 +1879,13 @@ export default function Home() {
         <p>本地查询系统 · 数据更新 {data.meta.generatedAt}</p>
       </footer>
 
-      {selected && <DetailDrawer job={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <DetailDrawer
+          job={selected}
+          metric={jobMetrics.get(selected.id)}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </main>
   );
 }
