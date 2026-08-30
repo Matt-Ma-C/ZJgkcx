@@ -1876,7 +1876,17 @@ export default function Home() {
           <strong>浙江公务员考情查询</strong>
           <span>{data.meta.scope}</span>
         </div>
-        <p>本地查询系统 · 数据更新 {data.meta.generatedAt}</p>
+        <div className="footer-meta">
+          <p>考情查询系统 · 数据更新 {data.meta.generatedAt}</p>
+          <a
+            className="icp-link"
+            href="https://beian.miit.gov.cn/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            浙ICP备2026060895号
+          </a>
+        </div>
       </footer>
 
       {selected && (

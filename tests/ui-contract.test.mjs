@@ -36,6 +36,12 @@ test("界面采用蓝白主题", () => {
   assert.match(styles, /--red-soft:\s*#eff6ff/);
 });
 
+test("页脚展示 ICP 备案号并链接工信部备案系统", () => {
+  assert.match(page, /浙ICP备2026060895号/);
+  assert.match(page, /https:\/\/beian\.miit\.gov\.cn\//);
+  assert.match(page, /rel="noopener noreferrer"/);
+});
+
 test("Markdown 导出包含考情字段和成绩分布", () => {
   assert.match(page, /导出 Markdown/);
   assert.match(page, /参加面试人员的笔试和面试成绩分布/);

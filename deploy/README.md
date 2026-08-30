@@ -42,7 +42,7 @@ bash /srv/zjgkcx/current/deploy/stage-nginx-ubuntu.sh
 该脚本只启用 `127.0.0.1:8080`，并把公网配置暂存在
 `/etc/nginx/sites-available/zjgkcx-public`，不会监听公网 80/443。
 
-确认 ICP 备案已通过、`www.zjgkcx.top` 的 A 记录已指向服务器公网 IP，
+确认 ICP 备案已通过、`zjgkcx.top` 与 `www.zjgkcx.top` 的 A 记录均已指向服务器公网 IP，
 且阿里云安全组已放行 TCP 80/443 后，执行：
 
 ```bash

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-readonly DOMAIN="www.zjgkcx.top"
+readonly DOMAINS=("zjgkcx.top" "www.zjgkcx.top")
 readonly EXPECTED_IP="47.110.230.76"
 readonly PUBLIC_AVAILABLE="/etc/nginx/sites-available/zjgkcx-public"
 readonly PUBLIC_ENABLED="/etc/nginx/sites-enabled/zjgkcx-public"
@@ -47,12 +47,14 @@ if ! systemctl is-active --quiet zjgkcx.service; then
   exit 1
 fi
 
-resolved_ips="$(getent ahostsv4 "${DOMAIN}" | awk '{ print $1 }' | sort -u)"
-if ! grep -qx "${EXPECTED_IP}" <<<"${resolved_ips}"; then
-  printf '%s 尚未解析到 %s，当前解析结果：\n%s\n' \
-    "${DOMAIN}" "${EXPECTED_IP}" "${resolved_ips:-（无）}" >&2
-  exit 1
-fi
+for domain in "${DOMAINS[@]}"; do
+  resolved_ips="$(getent ahostsv4 "${domain}" | awk '{ print $1 }' | sort -u)"
+  if ! grep -qx "${EXPECTED_IP}" <<<"${resolved_ips}"; then
+    printf '%s 尚未解析到 %s，当前解析结果：\n%s\n' \
+      "${domain}" "${EXPECTED_IP}" "${resolved_ips:-（无）}" >&2
+    exit 1
+  fi
+done
 
 created_link=false
 if [[ -e "${PUBLIC_ENABLED}" || -L "${PUBLIC_ENABLED}" ]]; then
@@ -83,10 +85,12 @@ certbot --nginx \
   --agree-tos \
   --redirect \
   --email "${email}" \
-  -d "${DOMAIN}"
+  -d "${DOMAINS[0]}" \
+  -d "${DOMAINS[1]}"
 
 nginx -t
 systemctl reload nginx.service
 trap - ERR
 
-printf '发布完成：https://%s\n' "${DOMAIN}"
+printf '发布完成：https://%s（同时覆盖 %s）\n' \
+  "${DOMAINS[0]}" "${DOMAINS[1]}"

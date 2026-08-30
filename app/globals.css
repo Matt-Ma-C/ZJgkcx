@@ -1241,6 +1241,21 @@ footer p {
   margin: 0;
 }
 
+.footer-meta {
+  justify-content: flex-end;
+}
+
+.icp-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.icp-link:hover,
+.icp-link:focus-visible {
+  color: var(--red);
+  text-decoration: underline;
+}
+
 .drawer-layer {
   position: fixed;
   z-index: 100;
