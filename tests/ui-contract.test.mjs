@@ -125,12 +125,12 @@ test("选岗分析结果使用 GFM Markdown 渲染器", () => {
 });
 
 test("系统将硬性资格与策略偏好分层，并提供本地量化分析", () => {
-  assert.match(page, />硬性资格</);
+  assert.match(page, />岗位要求</);
   assert.match(page, />策略偏好</);
   assert.match(page, /const eligibleJobs = useMemo/);
   assert.match(page, /new Worker\(new URL\("\.\/analytics-worker\.ts"/);
   assert.match(analyticsWorker, /analyzeSelection\(eligibleJobs, currentJobs, metrics\)/);
-  assert.match(page, /本地考情分析/);
+  assert.match(page, /<h2 id="insight-title">考情分析<\/h2>/);
   assert.match(page, /筛选条件影响因子/);
   assert.match(page, /更有利的策略组合/);
   assert.match(page, /历史难度指数/);

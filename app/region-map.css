@@ -1,0 +1,47 @@
+.region-panel { margin: 24px 0; padding: 28px; border: 1px solid #dbe4f0; border-radius: 18px; background: white; box-shadow: 0 10px 30px #1e40af09; }
+.region-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; }
+.region-eyebrow { color: #2563eb; font-size: 12px; letter-spacing: .15em; font-weight: 700; }
+.region-panel h2 { margin: 8px 0; font-size: 25px; }
+.region-panel p { color: #64748b; line-height: 1.8; }
+.region-badge { padding: 9px 12px; border-radius: 30px; background: #eff6ff; color: #1d4ed8; white-space: nowrap; font-size: 12px; }
+.region-totals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 22px 0; }
+.region-totals > div { padding: 18px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+.region-totals strong, .region-totals span { display: block; }
+.region-totals strong { font-size: 28px; color: #1e40af; font-variant-numeric: tabular-nums; }
+.region-totals span { color: #64748b; margin-top: 6px; }
+.region-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 18px; }
+.region-toolbar label { display: flex; align-items: center; gap: 8px; }
+.region-toolbar select { border: 1px solid #cbd5e1; background: white; padding: 8px; border-radius: 7px; }
+.region-toolbar > span { font-size: 12px; color: #64748b; }
+.region-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(270px, 1fr); border: 1px solid #dbe4f0; border-radius: 14px; overflow: hidden; }
+.region-stage { background: radial-gradient(ellipse at center, #fff, #eef5fc); min-width: 0; padding: 18px; }
+.region-hover { min-height: 66px; padding: 12px 14px; border: 1px solid #dae7f5; border-radius: 10px; background: #ffffffed; display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+.region-hover b { font-size: 17px; }
+.region-hover span { color: #1d4ed8; }
+.region-hover small { width: 100%; color: #64748b; }
+.region-svg { display: block; width: 100%; height: auto; }
+.region-shape { stroke: #fff; stroke-width: 1; vector-effect: non-scaling-stroke; cursor: pointer; transition: fill .15s; }
+.region-shape:hover, .region-shape:focus, .region-shape.selected { stroke: #0f172a; stroke-width: 2; outline: none; }
+.region-label { pointer-events: none; fill: #172554; font-size: 12px; font-weight: 700; paint-order: stroke; stroke: #ffffffd9; stroke-width: 3px; }
+.region-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #64748b; font-size: 11px; }
+.region-legend i { height: 8px; width: 90px; border-radius: 6px; background: linear-gradient(90deg,#c9dff5,#1a5dab); }
+.region-detail { padding: 20px; border-left: 1px solid #dbe4f0; min-width: 0; }
+.region-detail h3 { margin: 0; font-size: 18px; }
+.region-detail-heading p { margin: 6px 0 12px; color: #2563eb; }
+.region-detail-actions, .region-coverage > div { display: flex; gap: 8px; flex-wrap: wrap; }
+.region-panel button { cursor: pointer; }
+.region-detail-actions button, .region-pagination button, .region-coverage button { border: 1px solid #cbd5e1; border-radius: 7px; padding: 7px 10px; background: #fff; color: #1e40af; }
+.region-panel button:disabled { opacity: .4; cursor: default; }
+.region-jobs { padding: 0; margin: 8px 0; list-style: none; }
+.region-jobs li { border-bottom: 1px solid #edf2f7; }
+.region-jobs button { width: 100%; background: transparent; border: 0; padding: 12px 0; text-align: left; }
+.region-jobs button:hover { background: #eff6ff; }
+.region-jobs span, .region-jobs strong, .region-jobs small { display: block; line-height: 1.6; overflow-wrap: anywhere; }
+.region-jobs span { font-size: 11px; color: #64748b; }
+.region-jobs strong { font-size: 14px; color: #172554; }
+.region-jobs small { color: #64748b; }
+.region-pagination { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; }
+.region-coverage { background: #f8fafc; border-radius: 10px; padding: 16px; margin-top: 18px; font-size: 12px; }
+.region-coverage p:last-child { margin-bottom: 0; }
+.region-coverage a { color: #2563eb; text-decoration: underline; margin-left: 4px; }
+@media(max-width: 800px) { .region-layout { grid-template-columns: 1fr; } .region-detail { border-left: 0; border-top: 1px solid #dbe4f0; } .region-panel { padding: 16px; } .region-heading { display: block; } .region-badge { display: inline-block; margin-top: 8px; } .region-totals { grid-template-columns: repeat(2, 1fr); } .region-totals strong { font-size: 24px; } .region-stage { padding: 10px; } }

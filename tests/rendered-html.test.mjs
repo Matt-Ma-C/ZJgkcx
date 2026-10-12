@@ -29,6 +29,6 @@ test("首页可由本地服务正常渲染", async () => {
 
   const html = await response.text();
   assert.match(html, /<html[^>]*lang="zh-CN"/i);
-  assert.match(html, /<title>浙江公务员考情查询系统<\/title>/i);
+  assert.match(html, /<title>岗查查<\/title>/i);
   assert.match(html, /正在载入考情数据/);
 });

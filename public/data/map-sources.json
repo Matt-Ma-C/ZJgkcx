@@ -1,0 +1,101 @@
+{
+  "source": "Alibaba Cloud DataV GeoAtlas areas_v3",
+  "retrievedDate": "2026-09-12",
+  "cityCount": 11,
+  "countyCount": 90,
+  "uniqueCountyAdcodes": 90,
+  "uniqueCountyNames": 90,
+  "validation": "Every feature is MultiPolygon; rings closed and at least four points; parent adcode matches added cityAdcode.",
+  "limitations": [
+    "Source HTTP Last-Modified is a file timestamp, not an official administrative effective date.",
+    "Public visualization boundaries, not surveyed/legal cadastral boundaries.",
+    "Source GeoJSON does not declare its coordinate datum in a crs field; use standalone projection for dashboard display and do not assume alignment with WGS84 basemaps.",
+    "No independent verification of administrative changes after source file publication."
+  ],
+  "sources": [
+    {
+      "adcode": 330000,
+      "name": "浙江省",
+      "url": "https://geo.datav.aliyun.com/areas_v3/bound/330000_full.json",
+      "lastModified": "Fri, 04 Jun 2021 09:22:08 GMT",
+      "file": "zhejiang-cities.json"
+    },
+    {
+      "adcode": 330100,
+      "name": "杭州市",
+      "url": "https://geo.datav.aliyun.com/areas_v3/bound/330100_full.json",
+      "lastModified": "Tue, 22 Jun 2021 11:47:39 GMT",
+      "file": "330100_full.json"
+    },
+    {
+      "adcode": 330200,
+      "name": "宁波市",
+      "url": "https://geo.datav.aliyun.com/areas_v3/bound/330200_full.json",
+      "lastModified": "Fri, 04 Jun 2021 09:22:09 GMT",
+      "file": "330200_full.json"
+    },
+    {
+      "adcode": 330300,
+      "name": "温州市",
+      "url": "https://geo.datav.aliyun.com/areas_v3/bound/330300_full.json",
+      "lastModified": "Fri, 04 Jun 2021 09:22:09 GMT",
+      "file": "330300_full.json"
+    },
+    {
+      "adcode": 330400,
+      "name": "嘉兴市",
+      "url": "https://geo.datav.aliyun.com/areas_v3/bound/330400_full.json",
+      "lastModified": "Fri, 04 Jun 2021 09:22:09 GMT",
+      "file": "330400_full.json"
+    },
+    {
+      "adcode": 330500,
+      "name": "湖州市",
+      "url": "https://geo.datav.aliyun.com/areas_v3/bound/330500_full.json",
+      "lastModified": "Fri, 04 Jun 2021 09:22:09 GMT",
+      "file": "330500_full.json"
+    },
+    {
+      "adcode": 330600,
+      "name": "绍兴市",
+      "url": "https://geo.datav.aliyun.com/areas_v3/bound/330600_full.json",
+      "lastModified": "Fri, 04 Jun 2021 09:22:10 GMT",
+      "file": "330600_full.json"
+    },
+    {
+      "adcode": 330700,
+      "name": "金华市",
+      "url": "https://geo.datav.aliyun.com/areas_v3/bound/330700_full.json",
+      "lastModified": "Fri, 04 Jun 2021 09:22:10 GMT",
+      "file": "330700_full.json"
+    },
+    {
+      "adcode": 330800,
+      "name": "衢州市",
+      "url": "https://geo.datav.aliyun.com/areas_v3/bound/330800_full.json",
+      "lastModified": "Fri, 04 Jun 2021 09:22:10 GMT",
+      "file": "330800_full.json"
+    },
+    {
+      "adcode": 330900,
+      "name": "舟山市",
+      "url": "https://geo.datav.aliyun.com/areas_v3/bound/330900_full.json",
+      "lastModified": "Fri, 04 Jun 2021 09:22:10 GMT",
+      "file": "330900_full.json"
+    },
+    {
+      "adcode": 331000,
+      "name": "台州市",
+      "url": "https://geo.datav.aliyun.com/areas_v3/bound/331000_full.json",
+      "lastModified": "Fri, 04 Jun 2021 09:22:11 GMT",
+      "file": "331000_full.json"
+    },
+    {
+      "adcode": 331100,
+      "name": "丽水市",
+      "url": "https://geo.datav.aliyun.com/areas_v3/bound/331100_full.json",
+      "lastModified": "Fri, 04 Jun 2021 09:22:11 GMT",
+      "file": "331100_full.json"
+    }
+  ]
+}

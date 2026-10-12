@@ -2255,3 +2255,43 @@ footer p {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Compact module navigation reserves its own space on desktop. */
+.module-nav { position: fixed; left: 12px; top: 150px; width: 64px; z-index: 30; display: flex; flex-direction: column; padding: 4px 6px; border: 1px solid var(--line); border-radius: 12px; background: #fffffff5; box-shadow: var(--shadow); }
+.module-nav a { display: flex; flex-direction: column; align-items: center; padding: 10px 4px; color: var(--ink); text-decoration: none; white-space: nowrap; font-size: 13px; line-height: 1.5; }
+.module-nav a + a { border-top: 1px solid var(--line); }
+.module-nav-number { font-size: 12px; font-weight: 700; color: var(--red); margin-bottom: 2px; }
+.module-nav a:hover, .module-nav a:focus-visible { background: var(--red-soft); color: var(--red); }
+#filter-title, #region-map-title, #results-title, #insight-title, #analysis-title { scroll-margin-top: 24px; }
+@media (min-width: 1001px) { .hero-inner, .workspace, footer { width: min(1440px, calc(100% - 116px)); margin-left: max(92px, calc((100% - 1440px) / 2)); margin-right: 24px; } }
+@media (max-width: 1000px) { .module-nav { position: sticky; top: 0; left: auto; width: 100%; flex-direction: row; overflow-x: auto; border-radius: 0; padding: 4px 10px; } .module-nav a { flex: 1; padding: 6px 8px; font-size: 12px; } .module-nav a + a { border-top: 0; border-left: 1px solid var(--line); } #filter-title, #region-map-title, #results-title, #insight-title, #analysis-title { scroll-margin-top: 92px; } }
+/* Keep every job column visible within the available content width. */
+@media (min-width: 681px) {
+  .job-table { min-width: 0; }
+  .job-table th, .job-table td { padding-left: 8px; padding-right: 8px; overflow-wrap: anywhere; }
+  .job-table th:nth-child(1) { width: 8%; }
+  .job-table th:nth-child(2) { width: 21%; }
+  .job-table th:nth-child(3) { width: 26%; }
+  .job-table th:nth-child(4), .job-table th:nth-child(5) { width: 6%; }
+  .job-table th:nth-child(6) { width: 8%; }
+  .job-table th:nth-child(7) { width: 8%; }
+  .job-table th:nth-child(8) { width: 9%; }
+  .job-table th:nth-child(9) { width: 8%; }
+  .job-table .row-actions { min-width: 0; }
+  .job-table .detail-button { padding-left: 3px; padding-right: 3px; }
+}
+/* Align job rows with the module heading instead of the outer card edge. */
+.job-table-wrap { margin: 0 28px; }
+@media (max-width: 680px) { .job-table-wrap { margin: 0 16px; } }
+
+.filter-heading .filter-actions { display: flex; margin: 0; padding: 0; border: 0; gap: 10px; flex-shrink: 0; }
+.filter-description { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.filter-description p { margin: 0; color: var(--muted); font-size: 12px; }
+@media (max-width: 680px) {
+  .filter-heading { flex-direction: row; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .filter-heading > div { gap: 6px; }
+  .filter-heading .filter-actions { margin-left: auto; gap: 6px; }
+  .filter-heading .filter-actions button { padding: 0 9px; font-size: 12px; }
+}
+
+.brand-mark.brand-icon { background: url('/favicon.svg') center / contain no-repeat; border-radius: 8px; }

@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import RegionMap from "./region-map";
+import { sortJobs, type SortField, type SortOrder } from "./job-sort";
+import { minimumAdmittedWrittenScore } from "./admission-score";
 import remarkGfm from "remark-gfm";
 import {
   formatAnalyticsContext,
@@ -147,6 +150,8 @@ const createEmptyFilters = (): Filters => ({
   policeScope: "all",
 });
 
+const normalizeIdentity = (value: string) => /^202[456]年应届毕业生$/.test(value) ? "当年应届毕业生" : value;
+
 const PAGE_SIZE = 20;
 const ANALYSIS_JOB_LIMIT = 15_000;
 
@@ -174,6 +179,7 @@ function toAnalyticsJob(job: Job, includeScoreDistribution = false): AnalyticsJo
   const { interviewees, admitted, ...fields } = job;
   return {
     ...fields,
+    identity: normalizeIdentity(job.identity),
     intervieweeCount: interviewees.length,
     admittedCount: admitted.length,
     ...(includeScoreDistribution
@@ -703,8 +709,10 @@ export default function Home() {
   const [data, setData] = useState<Payload | null>(null);
   const [loadError, setLoadError] = useState("");
   const [draft, setDraft] = useState<Filters>(createEmptyFilters);
+  const [mapQueryId, setMapQueryId] = useState(0);
   const [applied, setApplied] = useState<Filters>(createEmptyFilters);
-  const [sort, setSort] = useState("default");
+  const [sortField, setSortField] = useState<SortField>("hires");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("default");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Job | null>(null);
   const [apiKey, setApiKey] = useState("");
@@ -820,7 +828,7 @@ export default function Home() {
         matchMulti(applied.year, job.year) &&
         matchMulti(applied.education, job.education) &&
         matchMulti(applied.degree, job.degree) &&
-        matchMulti(applied.identity, job.identity) &&
+        matchMulti(applied.identity, normalizeIdentity(job.identity)) &&
         matchMulti(applied.political, job.political) &&
         matchMulti(applied.ethnicity, job.ethnicity) &&
         matchMulti(applied.age, job.age) &&
@@ -844,35 +852,8 @@ export default function Home() {
           (applied.policeScope === "exclude" && !isPoliceJob(job))),
     );
 
-    if (sort === "ratio-desc") {
-      return [...matches].sort(
-        (a, b) => (b.reportRatio ?? -1) - (a.reportRatio ?? -1),
-      );
-    }
-    if (sort === "ratio-asc") {
-      return [...matches].sort(
-        (a, b) =>
-          (a.reportRatio ?? Number.MAX_SAFE_INTEGER) -
-          (b.reportRatio ?? Number.MAX_SAFE_INTEGER),
-      );
-    }
-    if (sort === "score-desc") {
-      return [...matches].sort(
-        (a, b) => (b.minimumWrittenScore ?? -1) - (a.minimumWrittenScore ?? -1),
-      );
-    }
-    if (sort === "difficulty-asc") {
-      return [...matches].sort(
-        (a, b) =>
-          (jobMetrics.get(a.id)?.difficultyScore ?? 101) -
-          (jobMetrics.get(b.id)?.difficultyScore ?? 101),
-      );
-    }
-    if (sort === "hires-desc") {
-      return [...matches].sort((a, b) => b.hires - a.hires);
-    }
-    return matches;
-  }, [applied, eligibleJobs, jobMetrics, sort]);
+    return sortJobs(matches, sortField, sortOrder);
+  }, [applied, eligibleJobs, sortField, sortOrder]);
 
   const availableJobs = useMemo(
     () => filteredJobs.filter((job) => !hiddenJobIds.has(job.id)),
@@ -958,7 +939,9 @@ export default function Home() {
     (applied.policeScope !== "all" ? 1 : 0);
 
   const applyFilters = () => {
+    setMapQueryId((id) => id + 1);
     setApplied({ ...draft });
+    requestAnimationFrame(() => document.getElementById("region-map-title")?.scrollIntoView({ behavior: "smooth", block: "start" }));
     setPage(1);
     setAnalysis("");
     setAnalysisError("");
@@ -968,6 +951,7 @@ export default function Home() {
   const resetFilters = () => {
     const empty = createEmptyFilters();
     setDraft(empty);
+    setMapQueryId((id) => id + 1);
     setApplied(createEmptyFilters());
     setPage(1);
     setAnalysis("");
@@ -1027,6 +1011,7 @@ export default function Home() {
       }
     }
     setDraft(next);
+    setMapQueryId((id) => id + 1);
     setApplied(next);
     setPage(1);
     setAnalysis("");
@@ -1142,10 +1127,10 @@ export default function Home() {
     <main>
       <header className="topbar">
         <div className="topbar-inner">
-          <a className="brand" href="#top" aria-label="浙江公务员考情查询系统首页">
-            <span className="brand-mark">浙</span>
+          <a className="brand" href="#top" aria-label="岗查查首页">
+            <span className="brand-mark brand-icon" aria-hidden="true" />
             <span>
-              <strong>浙江公务员考情查询</strong>
+              <strong>岗查查</strong>
               <small>浙江全省 · 2024—2026</small>
             </span>
           </a>
@@ -1162,7 +1147,7 @@ export default function Home() {
         <div className="hero-inner">
           <div className="hero-copy">
             <span className="kicker">2024—2026 浙江全省公务员招录数据</span>
-            <h1>浙江公务员考情查询</h1>
+            <h1>岗查查</h1>
             <p>岗位要求、报名热度、进面分数与录用结果，一处查清。</p>
           </div>
           <div className="hero-stats">
@@ -1182,25 +1167,39 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="workspace">
+      <nav className="module-nav" aria-label="模块导航">
+          <a href="#filter-title" aria-label="01报考条件"><span className="module-nav-number">01</span><span>报考</span><span>条件</span></a>
+          <a href="#region-map-title" aria-label="02岗位地图"><span className="module-nav-number">02</span><span>岗位</span><span>地图</span></a>
+          <a href="#results-title" aria-label="03岗位明细"><span className="module-nav-number">03</span><span>岗位</span><span>明细</span></a>
+          <a href="#insight-title" aria-label="04考情分析"><span className="module-nav-number">04</span><span>考情</span><span>分析</span></a>
+          <a href="#analysis-title" aria-label="05选岗分析"><span className="module-nav-number">05</span><span>选岗</span><span>分析</span></a>
+        </nav>
+        <div className="workspace">
         <section className="filter-card" aria-labelledby="filter-title">
           <div className="filter-heading">
             <div>
               <span className="panel-index">01</span>
-              <div>
-                <h2 id="filter-title">筛选报考条件</h2>
-                <p>先确定硬性资格，再用策略偏好缩小范围</p>
-              </div>
+              <h2 id="filter-title">报考条件</h2>
             </div>
+          <div className="filter-actions">
+            <button className="ghost-button" onClick={resetFilters}>
+              重置条件
+            </button>
+            <button className="primary-button" onClick={applyFilters}>
+              查询岗位
+            </button>
+          </div>
+          </div>
+          <div className="filter-description">
+            <p>先确定岗位要求，再用策略偏好缩小范围</p>
             {activeFilterCount > 0 && (
               <span className="active-count">已应用 {activeFilterCount} 项</span>
             )}
           </div>
-
           <div className="filter-grid">
             <div className="filter-group-title">
-              <strong>分析范围</strong>
-              <span>建议保留多个年度，便于检验条件影响是否稳定</span>
+              <strong>岗位要求</strong>
+              <span>选择年度及本人资格条件，确定可报岗位范围</span>
             </div>
             <MultiSelectField
               label="年度"
@@ -1208,11 +1207,7 @@ export default function Home() {
               options={data.options.years}
               onChange={(values) => updateMulti("year", values)}
             />
-            <div className="filter-group-title">
-              <strong>硬性资格</strong>
-              <span>用于形成真正可报的岗位池，系统不会建议伪造或改变这些条件</span>
-            </div>
-            <MultiSelectField
+<MultiSelectField
               label="学历要求"
               values={draft.education}
               options={data.options.education}
@@ -1227,7 +1222,7 @@ export default function Home() {
             <MultiSelectField
               label="现有身份要求"
               values={draft.identity}
-              options={data.options.identity}
+              options={[...new Set(data.options.identity.map(normalizeIdentity))]}
               onChange={(values) => updateMulti("identity", values)}
             />
             <MultiSelectField
@@ -1346,22 +1341,17 @@ export default function Home() {
             </label>
           </div>
 
-          <div className="filter-actions">
-            <button className="ghost-button" onClick={resetFilters}>
-              重置条件
-            </button>
-            <button className="primary-button" onClick={applyFilters}>
-              查询岗位
-            </button>
-          </div>
+
         </section>
+
+        <RegionMap key={mapQueryId} jobs={availableJobs} onDetail={setSelected} initialCity={applied.city} initialDistricts={applied.district} />
 
         <section className="results-section" aria-labelledby="results-title">
           <div className="results-heading">
             <div>
-              <span className="panel-index">02</span>
+              <span className="panel-index">03</span>
               <div>
-                <h2 id="results-title">岗位查询结果</h2>
+                <h2 id="results-title">岗位明细</h2>
                 <p>
                   硬性资格可报 <strong>{eligibleJobs.length}</strong> 个，当前偏好找到{" "}
                   <strong>{filteredJobs.length}</strong> 个；可用于导出和分析{" "}
@@ -1384,20 +1374,25 @@ export default function Home() {
                 导出 Markdown
               </button>
               <label className="sort-control">
-                <span>排序</span>
-                <select
-                  value={sort}
-                  onChange={(event) => {
-                    setSort(event.target.value);
-                    setPage(1);
-                  }}
-                >
-                  <option value="default">年度 / 区划</option>
-                  <option value="ratio-desc">报录比从高到低</option>
-                  <option value="ratio-asc">报录比从低到高</option>
-                  <option value="difficulty-asc">历史难度从低到高</option>
-                  <option value="score-desc">最低进面分从高到低</option>
-                  <option value="hires-desc">招录人数从多到少</option>
+                <span>排序字段</span>
+                <select value={sortField} onChange={(event) => {
+                  setSortField(event.target.value as SortField);
+                  setPage(1);
+                }}>
+                  <option value="hires">招录人数</option>
+                  <option value="reportRatio">报录比</option>
+                  <option value="minimumWrittenScore">最低进面分</option>
+                </select>
+              </label>
+              <label className="sort-control">
+                <span>排序方式</span>
+                <select value={sortOrder} onChange={(event) => {
+                  setSortOrder(event.target.value as SortOrder);
+                  setPage(1);
+                }}>
+                  <option value="asc">升序</option>
+                  <option value="desc">降序</option>
+                  <option value="default">默认</option>
                 </select>
               </label>
             </div>
@@ -1416,7 +1411,7 @@ export default function Home() {
                       <th>缴费</th>
                       <th>报录比</th>
                       <th>最低进面分</th>
-                      <th>历史难度</th>
+                      <th title="最终录用人员中的最低笔试成绩；全部已收录录用人员均匹配到成绩时显示">最低录取分</th>
                       <th aria-label="操作" />
                     </tr>
                   </thead>
@@ -1473,13 +1468,12 @@ export default function Home() {
                           </strong>
                           <small>笔试成绩</small>
                         </td>
-                        <td data-label="历史难度">
-                          <strong className="difficulty-cell">
-                            {jobMetrics.get(job.id)?.difficultyScore ?? "—"}
+                        <td data-label="最低录取分">
+                          <strong className="score-cell">
+                            {formatValue(minimumAdmittedWrittenScore(job))}
                           </strong>
                           <small>
-                            {jobMetrics.get(job.id)?.difficultyBand ?? "暂无判断"} ·{" "}
-                            {jobMetrics.get(job.id)?.confidence ?? "数据不足"}
+                            {!job.admitted.length ? "无录用数据" : minimumAdmittedWrittenScore(job) === null ? "成绩不全" : "录用人员笔试"}
                           </small>
                         </td>
                         <td>
@@ -1557,9 +1551,9 @@ export default function Home() {
         >
           <div className="analysis-heading">
             <div>
-              <span className="panel-index">03</span>
+              <span className="panel-index">04</span>
               <div>
-                <h2 id="insight-title">本地考情分析</h2>
+                <h2 id="insight-title">考情分析</h2>
                 <p>程序精确计算历史难度、数据覆盖和更有利的策略组合</p>
               </div>
             </div>
@@ -1753,9 +1747,9 @@ export default function Home() {
         <section className="analysis-section" aria-labelledby="analysis-title">
           <div className="analysis-heading">
             <div>
-              <span className="panel-index">04</span>
+              <span className="panel-index">05</span>
               <div>
-                <h2 id="analysis-title">DeepSeek 选岗分析</h2>
+                <h2 id="analysis-title">选岗分析</h2>
                 <p>
                   解读程序预计算的影响因子与条件组合，不再让模型估算统计值
                 </p>
@@ -1873,7 +1867,7 @@ export default function Home() {
 
       <footer>
         <div>
-          <strong>浙江公务员考情查询</strong>
+          <strong>岗查查</strong>
           <span>{data.meta.scope}</span>
         </div>
         <div className="footer-meta">
