@@ -5,4 +5,7 @@
 *.sh text eol=lf
 
 # Large generated dataset: keep it versioned but avoid noisy GitHub diffs.
-public/data/jobs.json -diff linguist-generated=true
+public/data/** -text -diff linguist-generated=true
+
+# Applied migration hashes must remain stable across checkouts.
+drizzle/*.sql -text

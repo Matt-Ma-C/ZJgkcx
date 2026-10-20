@@ -1,3 +1,42 @@
+export type ScoreProvenance = {
+  status: "unknown" | "verified" | "review";
+  scoreType?: string | null;
+  maximum?: number | null;
+  subjects?: string[];
+  conversionRule?: string | null;
+  comparisonKey?: string | null;
+  officialSourceUrl?: string | null;
+  sourceVersion?: string | null;
+  reviewReasons?: string[];
+};
+
+type ScoreComparableJob = {
+  scoreProvenance?: ScoreProvenance;
+  minimumWrittenScore?: number | null;
+  scoreSummary?: { written?: string; interview?: string; rawMinimum?: number | null; rawMaximum?: number | null };
+};
+
+function scoreOutOfRange(job: ScoreComparableJob) {
+  const maximum = job.scoreProvenance?.maximum;
+  if (!Number.isFinite(maximum) || (maximum ?? 0) <= 0) return false;
+  const values = [job.minimumWrittenScore, job.scoreSummary?.rawMinimum, job.scoreSummary?.rawMaximum];
+  return values.some((value) => value !== null && value !== undefined &&
+    (!Number.isFinite(value) || value < 0 || value > maximum!));
+}
+
+/** Raw values remain visible; comparison requires source-confirmed scoring metadata. */
+export function scoreComparisonKey(job: ScoreComparableJob) {
+  const source = job.scoreProvenance;
+  if (
+    source?.status !== "verified" || !source.scoreType ||
+    !Number.isFinite(source.maximum) || (source.maximum ?? 0) <= 0 ||
+    !source.subjects?.length || !source.conversionRule ||
+    !source.comparisonKey || !/^https?:\/\//.test(source.officialSourceUrl ?? "") ||
+    !source.sourceVersion || scoreOutOfRange(job)
+  ) return null;
+  return JSON.stringify([source.comparisonKey, source.scoreType, source.maximum, [...source.subjects].sort(), source.conversionRule]);
+}
+
 export type AnalyticsJob = {
   id: string;
   year: number;
@@ -27,6 +66,8 @@ export type AnalyticsJob = {
   admittedCount: number;
   writtenScoreSummary?: string;
   interviewScoreSummary?: string;
+  scoreProvenance?: ScoreProvenance;
+  scoreSummary?: { written?: string; interview?: string; rawMinimum?: number | null; rawMaximum?: number | null };
   warnings: string[];
 };
 
@@ -40,6 +81,11 @@ export type JobMetric = {
   scorePercentile: number | null;
   cohortSize: number;
   completeness: number;
+  scoreStatus?: "verified" | "unknown" | "review";
+  compositeEligible?: boolean;
+  evidenceReasons?: string[];
+  ratioCohortSize?: number;
+  scoreCohortSize?: number;
 };
 
 export type AnalyticsSummary = {
@@ -53,6 +99,9 @@ export type AnalyticsSummary = {
   medianScore: number | null;
   medianDifficulty: number | null;
   highConfidenceJobs: number;
+  comparableScoreCoverage?: number;
+  compositeCoverage?: number;
+  evidenceNotice?: string;
 };
 
 export type RecommendationFilter = {
@@ -188,6 +237,7 @@ function completeness(job: AnalyticsJob) {
 
 function jobConfidence(job: AnalyticsJob): ConfidenceLevel {
   const complete = completeness(job);
+  if (!scoreComparisonKey(job)) return complete >= 0.5 ? "较低" : "数据不足";
   if (
     complete === 1 &&
     job.minimumWrittenScore !== null &&
@@ -208,34 +258,29 @@ function cohortKey(job: AnalyticsJob) {
 export function buildJobMetrics(jobs: AnalyticsJob[]) {
   const ratioByCohort = new Map<string, number[]>();
   const scoreByCohort = new Map<string, number[]>();
-  const ratioByYear = new Map<number, number[]>();
-  const scoreByYear = new Map<number, number[]>();
+  const scoreCohortJobs = new Map<string, number>();
 
   for (const job of jobs) {
     const key = cohortKey(job);
-    if (job.reportRatio !== null) {
+    if (job.reportRatio !== null && Number.isFinite(job.reportRatio) && job.reportRatio >= 0) {
       const cohortValues = ratioByCohort.get(key) ?? [];
       cohortValues.push(job.reportRatio);
       ratioByCohort.set(key, cohortValues);
-      const yearValues = ratioByYear.get(job.year) ?? [];
-      yearValues.push(job.reportRatio);
-      ratioByYear.set(job.year, yearValues);
     }
-    if (job.minimumWrittenScore !== null) {
-      const cohortValues = scoreByCohort.get(key) ?? [];
+    const comparison = scoreComparisonKey(job);
+    if (comparison) {
+      const scoreKey = `${key}|${comparison}`;
+      scoreCohortJobs.set(scoreKey, (scoreCohortJobs.get(scoreKey) ?? 0) + 1);
+      if (job.minimumWrittenScore === null || !Number.isFinite(job.minimumWrittenScore)) continue;
+      const cohortValues = scoreByCohort.get(scoreKey) ?? [];
       cohortValues.push(job.minimumWrittenScore);
-      scoreByCohort.set(key, cohortValues);
-      const yearValues = scoreByYear.get(job.year) ?? [];
-      yearValues.push(job.minimumWrittenScore);
-      scoreByYear.set(job.year, yearValues);
+      scoreByCohort.set(scoreKey, cohortValues);
     }
   }
 
   for (const values of [
     ...ratioByCohort.values(),
     ...scoreByCohort.values(),
-    ...ratioByYear.values(),
-    ...scoreByYear.values(),
   ]) {
     values.sort((a, b) => a - b);
   }
@@ -244,37 +289,70 @@ export function buildJobMetrics(jobs: AnalyticsJob[]) {
   for (const job of jobs) {
     const key = cohortKey(job);
     const cohortRatios = ratioByCohort.get(key) ?? [];
-    const cohortScores = scoreByCohort.get(key) ?? [];
-    const ratioReference =
-      cohortRatios.length >= 20 ? cohortRatios : ratioByYear.get(job.year) ?? [];
-    const scoreReference =
-      cohortScores.length >= 20 ? cohortScores : scoreByYear.get(job.year) ?? [];
+    const comparison = scoreComparisonKey(job);
+    const scoreKey = `${key}|${comparison}`;
+    const cohortScores = comparison ? scoreByCohort.get(scoreKey) ?? [] : [];
+    // Never broaden a sparse examination cohort into the entire year's scores.
+    const ratioReference = cohortRatios.length >= 20 ? cohortRatios : [];
+    const scoreReference = cohortScores.length >= 20 &&
+      ratio(cohortScores.length, scoreCohortJobs.get(scoreKey) ?? 0) >= 0.6
+      ? cohortScores : [];
     const ratioPercentile =
-      job.reportRatio === null || !ratioReference.length
+      job.reportRatio === null || !Number.isFinite(job.reportRatio) || !ratioReference.length
         ? null
         : percentileRank(ratioReference, job.reportRatio);
     const scorePercentile =
-      job.minimumWrittenScore === null || !scoreReference.length
+      job.minimumWrittenScore === null || !Number.isFinite(job.minimumWrittenScore) || !scoreReference.length
         ? null
         : percentileRank(scoreReference, job.minimumWrittenScore);
-    const availablePercentiles = finiteValues([ratioPercentile, scorePercentile]);
     const difficultyScore =
       ratioPercentile !== null && scorePercentile !== null
         ? ratioPercentile * 0.55 + scorePercentile * 0.45
-        : availablePercentiles.length
-          ? availablePercentiles[0]
-          : null;
+        : null;
     metrics.set(job.id, {
       difficultyScore: round(difficultyScore, 1),
       difficultyBand: difficultyBand(difficultyScore),
-      confidence: jobConfidence(job),
+      confidence: difficultyScore === null && jobConfidence(job) === "高" ? "中" : jobConfidence(job),
       ratioPercentile: round(ratioPercentile, 1),
       scorePercentile: round(scorePercentile, 1),
       cohortSize: Math.max(ratioReference.length, scoreReference.length),
       completeness: completeness(job),
+      scoreStatus: comparison ? "verified" : job.scoreProvenance?.status === "review" || scoreOutOfRange(job) ? "review" : "unknown",
+      compositeEligible: difficultyScore !== null,
+      ratioCohortSize: cohortRatios.length,
+      scoreCohortSize: cohortScores.length,
+      evidenceReasons: [
+        ...(scoreOutOfRange(job) ? ["已收录笔试原值小于0、非有限数或超过来源标注满分，保留原值待复核，不参与成绩比较"] : []),
+        ...(!comparison ? ["成绩类型、满分、科目、折算规则或官方来源尚未核实，原值不参与分差与综合推荐"] : []),
+        ...(ratioReference.length ? [] : ["同年度同考试类别报名样本不足20岗"]),
+        ...(scoreReference.length || !comparison ? [] : ["同口径成绩样本不足20岗或覆盖低于60%"]),
+        ...(job.warnings.length ? ["存在待复核数据提示"] : []),
+      ],
     });
   }
   return metrics;
+}
+
+function comparableScores(jobs: AnalyticsJob[], minimum = 10) {
+  const keys = new Set(jobs.map(scoreComparisonKey).filter(Boolean));
+  const values = jobs.filter((job) => scoreComparisonKey(job) && Number.isFinite(job.minimumWrittenScore));
+  return keys.size === 1 && values.length >= minimum && ratio(values.length, jobs.length) >= 0.6
+    ? values.map((job) => job.minimumWrittenScore) : [];
+}
+
+function comparisonHasSameScoreBasis(group: AnalyticsJob[], comparison: AnalyticsJob[]) {
+  const keys = new Set([...group, ...comparison].map(scoreComparisonKey).filter(Boolean));
+  return keys.size === 1 && comparableScores(group).length > 0 && comparableScores(comparison).length > 0;
+}
+
+function supportedDifficulty(jobs: AnalyticsJob[], metrics: Map<string, JobMetric>) {
+  const values = finiteValues(jobs.map((job) => metrics.get(job.id)?.difficultyScore));
+  return values.length >= 10 && ratio(values.length, jobs.length) >= 0.6 ? median(values) : null;
+}
+
+function supportedRatio(jobs: AnalyticsJob[]) {
+  const values = finiteValues(jobs.map((job) => job.reportRatio));
+  return values.length >= 10 && ratio(values.length, jobs.length) >= 0.6 ? median(values) : null;
 }
 
 function summarize(jobs: AnalyticsJob[], metrics: Map<string, JobMetric>): AnalyticsSummary {
@@ -301,12 +379,12 @@ function summarize(jobs: AnalyticsJob[], metrics: Map<string, JobMetric>): Analy
       jobs.length,
     ),
     medianRatio: round(median(jobs.map((job) => job.reportRatio))),
-    medianScore: round(median(jobs.map((job) => job.minimumWrittenScore))),
-    medianDifficulty: round(
-      median(jobMetrics.map((metric) => metric.difficultyScore)),
-      1,
-    ),
+    medianScore: round(median(comparableScores(jobs))),
+    medianDifficulty: round(comparableScores(jobs).length ? supportedDifficulty(jobs, metrics) : null, 1),
     highConfidenceJobs: jobMetrics.filter((metric) => metric.confidence === "高").length,
+    comparableScoreCoverage: ratio(jobs.filter((job) => scoreComparisonKey(job) && Number.isFinite(job.minimumWrittenScore)).length, jobs.length),
+    compositeCoverage: ratio(jobMetrics.filter((metric) => metric.difficultyScore !== null).length, jobs.length),
+    evidenceNotice: "覆盖率仅表示本库收录程度；证据质量不代表预测准确率。口径未核实、混合口径、样本或覆盖不足时不计算成绩优势与综合推荐。",
   };
 }
 
@@ -511,19 +589,20 @@ function comparisonConfidence(
   comparisonCount: number,
   scoreCoverage: number,
   stableYears: number,
+  observedYears = 0,
 ): ConfidenceLevel {
   if (
     groupCount >= 50 &&
     comparisonCount >= 50 &&
     scoreCoverage >= 0.65 &&
-    stableYears >= 2
+    stableYears >= 2 && observedYears >= 2 && stableYears / observedYears >= 0.75
   ) {
     return "高";
   }
   if (groupCount >= 20 && comparisonCount >= 20 && scoreCoverage >= 0.45) {
     return "中";
   }
-  if (groupCount >= 10 && comparisonCount >= 10) return "较低";
+  if (groupCount >= 10 && comparisonCount >= 10 && scoreCoverage >= 0.6) return "较低";
   return "数据不足";
 }
 
@@ -532,6 +611,7 @@ function directionFor(
   ratioDelta: number | null,
 ) {
   if (difficultyDelta === null && ratioDelta === null) return "无法比较";
+  if (difficultyDelta === null) return ratioDelta! < 0 ? "仅报名竞争较低（成绩不可比）" : ratioDelta! > 0 ? "仅报名竞争较高（成绩不可比）" : "报名竞争接近（成绩不可比）";
   const easierDifficulty = difficultyDelta !== null && difficultyDelta <= -5;
   const easierRatio = ratioDelta !== null && ratioDelta < 0;
   const harderDifficulty = difficultyDelta !== null && difficultyDelta >= 5;
@@ -548,6 +628,10 @@ function yearlyStability(
   comparison: AnalyticsJob[],
   metrics: Map<string, JobMetric>,
 ) {
+  const overallGroup = supportedDifficulty(group, metrics);
+  const overallComparison = supportedDifficulty(comparison, metrics);
+  if (overallGroup === null || overallComparison === null) return { stableYears: 0, observedYears: 0 };
+  const overallDirection = Math.abs(overallGroup - overallComparison) < 2 ? 0 : Math.sign(overallGroup - overallComparison);
   const groupByYear = new Map<number, Array<number | null>>();
   const comparisonByYear = new Map<number, Array<number | null>>();
   for (const job of group) {
@@ -575,7 +659,7 @@ function yearlyStability(
     if (
       groupMedian !== null &&
       comparisonMedian !== null &&
-      groupMedian < comparisonMedian
+      (Math.abs(groupMedian - comparisonMedian) < 2 ? 0 : Math.sign(groupMedian - comparisonMedian)) === overallDirection
     ) {
       stableYears += 1;
     }
@@ -592,17 +676,14 @@ function evaluateGroup(
   const comparison = baseJobs.filter((job) => !definition.matches(job));
   if (group.length < 10 || comparison.length < 10) return null;
 
-  const groupRatio = median(group.map((job) => job.reportRatio));
-  const comparisonRatio = median(comparison.map((job) => job.reportRatio));
-  const groupScore = median(group.map((job) => job.minimumWrittenScore));
-  const comparisonScore = median(comparison.map((job) => job.minimumWrittenScore));
-  const groupDifficulty = median(
-    group.map((job) => metrics.get(job.id)?.difficultyScore ?? null),
-  );
-  const comparisonDifficulty = median(
-    comparison.map((job) => metrics.get(job.id)?.difficultyScore ?? null),
-  );
-  const scoreCount = group.filter((job) => job.minimumWrittenScore !== null).length;
+  const groupRatio = supportedRatio(group);
+  const comparisonRatio = supportedRatio(comparison);
+  const sameBasis = comparisonHasSameScoreBasis(group, comparison);
+  const groupScore = sameBasis ? median(comparableScores(group)) : null;
+  const comparisonScore = sameBasis ? median(comparableScores(comparison)) : null;
+  const groupDifficulty = sameBasis ? supportedDifficulty(group, metrics) : null;
+  const comparisonDifficulty = sameBasis ? supportedDifficulty(comparison, metrics) : null;
+  const scoreCount = group.filter((job) => scoreComparisonKey(job) && Number.isFinite(job.minimumWrittenScore)).length;
   const { stableYears, observedYears } = yearlyStability(group, comparison, metrics);
   const difficultyDelta =
     groupDifficulty === null || comparisonDifficulty === null
@@ -615,8 +696,9 @@ function evaluateGroup(
   const confidence = comparisonConfidence(
     group.length,
     comparison.length,
-    ratio(scoreCount, group.length),
+    sameBasis ? Math.min(ratio(scoreCount, group.length), ratio(comparableScores(comparison).length, comparison.length)) : 0,
     stableYears,
+    observedYears,
   );
   const direction = directionFor(difficultyDelta, ratioDelta);
   return {
@@ -639,9 +721,10 @@ function evaluateGroup(
     stableYears,
     observedYears,
     explanation:
-      `${definition.group}与其余可报岗位比较；` +
+      `${definition.group}与其余筛选范围岗位比较；` +
       `难度指数差${difficultyDelta === null ? "无法计算" : `${round(difficultyDelta, 1)}`}，` +
-      `缴费报录比中位数差${ratioDelta === null ? "无法计算" : `${round(ratioDelta)}`}。`,
+      `缴费报录比中位数差${ratioDelta === null ? "无法计算" : `${round(ratioDelta)}`}。` +
+      (!sameBasis ? "成绩口径、样本或双方覆盖不足，停止成绩差与综合推荐；报名竞争仅作独立描述。" : "证据质量描述历史资料，不代表预测准确率。"),
     applyFilter: definition.applyFilter,
   };
 }
@@ -667,18 +750,16 @@ function combinationFromDefinitions(
     (job) => !definitions.every((factor) => factor.matches(job)),
   );
   if (group.length < 20 || comparison.length < 20) return null;
+  if (!comparisonHasSameScoreBasis(group, comparison)) return null;
   const scoreCoverage = ratio(
-    group.filter((job) => job.minimumWrittenScore !== null).length,
+    group.filter((job) => scoreComparisonKey(job) && Number.isFinite(job.minimumWrittenScore)).length,
     group.length,
   );
-  const groupRatio = median(group.map((job) => job.reportRatio));
-  const comparisonRatio = median(comparison.map((job) => job.reportRatio));
-  const groupDifficulty = median(
-    group.map((job) => metrics.get(job.id)?.difficultyScore ?? null),
-  );
-  const comparisonDifficulty = median(
-    comparison.map((job) => metrics.get(job.id)?.difficultyScore ?? null),
-  );
+  const groupRatio = supportedRatio(group);
+  const comparisonRatio = supportedRatio(comparison);
+  const groupDifficulty = supportedDifficulty(group, metrics);
+  const comparisonDifficulty = supportedDifficulty(comparison, metrics);
+  if (groupDifficulty === null || comparisonDifficulty === null || groupRatio === null || comparisonRatio === null) return null;
   const difficultyDelta =
     groupDifficulty === null || comparisonDifficulty === null
       ? null
@@ -695,8 +776,9 @@ function combinationFromDefinitions(
   const confidence = comparisonConfidence(
     group.length,
     comparison.length,
-    scoreCoverage,
+    Math.min(scoreCoverage, ratio(comparableScores(comparison).length, comparison.length)),
     stableYears,
+    observedYears,
   );
   if (confidence === "数据不足") return null;
   const representativeJobIds = [...group]
@@ -718,7 +800,7 @@ function combinationFromDefinitions(
     jobCount: group.length,
     scoreCoverage,
     medianRatio: round(groupRatio),
-    medianScore: round(median(group.map((job) => job.minimumWrittenScore))),
+    medianScore: round(median(comparableScores(group))),
     medianDifficulty: round(groupDifficulty, 1),
     difficultyDelta: round(difficultyDelta, 1),
     ratioDelta: round(ratioDelta),
@@ -873,15 +955,18 @@ export function formatAnalyticsContext(
   return `# 程序预计算的考情分析数据
 
 > 以下统计由查询系统确定性计算完成。请直接解释这些结果，不要重新估算中位数或差值。
-> “历史难度指数”是在同年度、同考试类别内，将缴费报录比百分位与最低进面分百分位加权得到，仅用于相对比较，不是上岸概率。
+> 报名竞争、成绩门槛和资料完整度分别描述。综合指数只在同年度、同考试类别、来源已核实且计分口径相同的组内，以55%报名竞争分位和45%成绩分位计算；缺一项时不计算，不回退全年口径。它描述历史相对位置，不是上岸概率。
+> 成绩原值未核实满分、科目或折算方式时只保留展示，不能换算、比较分数优势或进入综合推荐。允许无足够证据推荐。证据质量不是预测准确率；年度一致性同时适用于有利与不利方向。
 
 ## 范围与覆盖
 
-- 硬性资格范围岗位：${analytics.eligible.jobCount}
+- 待逐项核验的检索范围岗位：${analytics.eligible.jobCount}
 - 当前偏好筛选后岗位：${summary.jobCount}
 - 招录人数合计：${summary.hires}
 - 缴费数据覆盖：${(summary.paymentCoverage * 100).toFixed(1)}%
 - 最低进面分覆盖：${(summary.scoreCoverage * 100).toFixed(1)}%
+- 已确认可比口径成绩覆盖：${((summary.comparableScoreCoverage ?? 0) * 100).toFixed(1)}%
+- 完整综合指标覆盖：${((summary.compositeCoverage ?? 0) * 100).toFixed(1)}%
 - 面试数据覆盖：${(summary.interviewCoverage * 100).toFixed(1)}%
 - 录用数据覆盖：${(summary.admissionCoverage * 100).toFixed(1)}%
 - 缴费报录比中位数：${summary.medianRatio ?? "—"}
@@ -890,13 +975,13 @@ export function formatAnalyticsContext(
 
 ## 单条件影响
 
-| 维度 | 分组 | 岗位数 | 分数有效数（覆盖率） | 最低进面分中位数 | 分数差 | 报录比中位数 | 报录比差 | 难度指数 | 难度差 | 有利年度 | 可信度 | 方向 |
+| 维度 | 分组 | 岗位数 | 可比成绩数（覆盖率） | 同口径成绩中位数 | 分数差 | 报录比中位数 | 报录比差 | 完整综合指数 | 指数差 | 同向年度/可观察年度 | 证据质量 | 方向 |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
 ${factors.join("\n") || "| — | 当前样本无法比较 | 0 | — | — | — | — | — | — | — | — | 数据不足 | 无法比较 |"}
 
 ## 程序筛选出的候选条件组合
 
-| 条件组合 | 岗位数 | 分数覆盖率 | 报录比中位数 | 最低进面分中位数 | 难度指数 | 难度差 | 报录比差 | 有利年度 | 可信度 |
+| 条件组合 | 岗位数 | 可比成绩覆盖率 | 报录比中位数 | 同口径成绩中位数 | 完整综合指数 | 指数差 | 报录比差 | 同向年度/可观察年度 | 证据质量 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 ${combinations.join("\n") || "| 暂无满足样本量与稳定性要求的组合 | 0 | — | — | — | — | — | — | — | 数据不足 |"}
 

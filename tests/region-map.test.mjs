@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
+import { readPublishedIndex } from "../scripts/public-data.mjs";
 import { regionIndex, locateJob, summarizeRegions, totalHires } from "../app/region-data.ts";
 const read = async name => JSON.parse(await readFile(new URL(`../public/data/${name}.json`, import.meta.url), "utf8"));
-const [cities, counties, { jobs }] = await Promise.all([read("cities"), read("counties"), read("jobs")]);
+const [cities, counties, { index: { jobs } }] = await Promise.all([read("cities"), read("counties"), readPublishedIndex(fileURLToPath(new URL("../public/",import.meta.url)))]);
 const index = regionIndex(cities, counties);
 test("地图覆盖11市90县区且行政区代码唯一", () => {
   assert.equal(index.cityNames.size, 11); assert.equal(index.countyNames.size, 90);

@@ -4,6 +4,7 @@ import {
   analyzeSelection,
   buildJobMetrics,
   formatAnalyticsContext,
+  scoreComparisonKey,
 } from "../app/analytics.ts";
 
 function makeJob(index, overrides = {}) {
@@ -38,6 +39,9 @@ function makeJob(index, overrides = {}) {
     writtenScoreSummary: "n=1；中位 132",
     interviewScoreSummary: "n=1；中位 82",
     warnings: [],
+    scoreProvenance: { status: "verified", scoreType: "测试笔试合成分", maximum: 200,
+      subjects: ["测试行测", "测试申论"], conversionRule: "测试原值无折算", comparisonKey: "fixture-200",
+      officialSourceUrl: "https://example.gov.cn/fixture", sourceVersion: "fixture-v1" },
     ...overrides,
   };
 }
@@ -55,6 +59,90 @@ test("历史难度在同年度同考试类别内标准化，低竞争岗位指�
   assert.ok(metrics.get("job-0").difficultyScore < metrics.get("job-89").difficultyScore);
   assert.match(metrics.get("job-0").difficultyBand, /难度低/);
   assert.equal(metrics.get("job-0").confidence, "高");
+});
+
+test("已核实口径仍排除负分、非有限数和超过满分的原始记录，含摘要最高值越界", () => {
+  const jobs = Array.from({length:90},(_,index) => makeJob(index));
+  jobs[0].minimumWrittenScore = -1;
+  jobs[1].minimumWrittenScore = 201;
+  jobs[2].minimumWrittenScore = Number.NaN;
+  jobs[3].scoreSummary = {rawMinimum:132,rawMaximum:220};
+  const metrics = buildJobMetrics(jobs);
+  for (let index=0;index<4;index++) {
+    assert.equal(scoreComparisonKey(jobs[index]),null);
+    assert.equal(metrics.get(`job-${index}`).scorePercentile,null);
+    assert.equal(metrics.get(`job-${index}`).difficultyScore,null);
+    assert.equal(metrics.get(`job-${index}`).scoreStatus,"review");
+    assert.match(metrics.get(`job-${index}`).evidenceReasons.join("；"),/待复核/);
+  }
+  assert.ok(scoreComparisonKey(makeJob(500,{minimumWrittenScore:0})));
+  assert.ok(scoreComparisonKey(makeJob(501,{minimumWrittenScore:200})));
+  assert.equal(jobs[0].minimumWrittenScore,-1,"只拦截比较，不改写原值");
+});
+
+test("人工比较键相同也必须验证满分、科目及公式指纹", () => {
+  const first = makeJob(500,{minimumWrittenScore:80});
+  const otherMaximum = {...first,scoreProvenance:{...first.scoreProvenance,maximum:100}};
+  const otherSubjects = {...first,scoreProvenance:{...first.scoreProvenance,subjects:["不同测试科目"]}};
+  const otherFormula = {...first,scoreProvenance:{...first.scoreProvenance,conversionRule:"不同测试公式"}};
+  assert.notEqual(scoreComparisonKey(first),scoreComparisonKey(otherMaximum));
+  assert.notEqual(scoreComparisonKey(first),scoreComparisonKey(otherSubjects));
+  assert.notEqual(scoreComparisonKey(first),scoreComparisonKey(otherFormula));
+});
+
+test("未知成绩口径保留报名竞争，但不输出分数优势、综合排名或推荐", () => {
+  const jobs = Array.from({ length: 180 }, (_, index) => makeJob(index, {
+    scoreProvenance: {status:"unknown"}, city: index < 90 ? "杭州市" : "宁波市",
+    reportRatio: index < 90 ? 10 : 100, minimumWrittenScore: index < 90 ? 60 : 140,
+  }));
+  const metrics = buildJobMetrics(jobs);
+  assert.notEqual(metrics.get("job-0").ratioPercentile, null);
+  assert.equal(metrics.get("job-0").scorePercentile, null);
+  assert.equal(metrics.get("job-0").difficultyScore, null);
+  const analytics = analyzeSelection(jobs, jobs, metrics);
+  assert.equal(analytics.current.medianScore, null);
+  assert.equal(analytics.current.comparableScoreCoverage, 0);
+  assert.equal(analytics.recommendations.length, 0);
+  assert.ok(analytics.factorImpacts.every((impact) => impact.scoreDelta === null && impact.difficultyDelta === null));
+});
+
+test("不同已核实计分口径不能直接比较分差或生成跨口径综合推荐", () => {
+  const jobs = Array.from({ length: 180 }, (_, index) => {
+    const job = makeJob(index, { city:index < 90 ? "杭州市" : "宁波市", professionalTest:index < 90 ? "是" : "否", reportRatio:index < 90 ? 10 : 100 });
+    job.scoreProvenance = {...job.scoreProvenance, comparisonKey:index < 90 ? "fixture-100" : "fixture-200", maximum:index < 90 ? 100 : 200};
+    return job;
+  });
+  const metrics = buildJobMetrics(jobs);
+  const analytics = analyzeSelection(jobs, jobs, metrics);
+  const impact = analytics.factorImpacts.find((item) => item.dimension === "专业加试" && item.group === "是");
+  assert.equal(impact.scoreDelta, null);
+  assert.equal(impact.difficultyDelta, null);
+  assert.equal(analytics.current.medianScore, null);
+  assert.equal(analytics.recommendations.length, 0);
+});
+
+test("缺少成绩的岗位不把报录比指标冒充综合指数；小类别不回退全年", () => {
+  const jobs = Array.from({ length:90 }, (_, index) => makeJob(index, {
+    bigCategory:index < 9 ? "小样本类" : "综合类", minimumWrittenScore:index === 30 ? null : 130 + index / 10,
+  }));
+  const metrics = buildJobMetrics(jobs);
+  assert.equal(metrics.get("job-0").scorePercentile, null);
+  assert.equal(metrics.get("job-0").difficultyScore, null);
+  assert.notEqual(metrics.get("job-30").ratioPercentile, null);
+  assert.equal(metrics.get("job-30").difficultyScore, null);
+});
+
+test("对照组低覆盖不推荐；年度一致性对持续有利与持续不利对称", () => {
+  const jobs = Array.from({length:180}, (_, index) => makeJob(index, {
+    city:index < 90 ? "杭州市" : "宁波市", reportRatio:index < 90 ? 10 : 80, minimumWrittenScore:index < 90 ? 115 : 140,
+  }));
+  const analytics = analyzeSelection(jobs,jobs,buildJobMetrics(jobs));
+  const cityImpacts = analytics.factorImpacts.filter((item) => item.dimension === "设区市");
+  assert.equal(cityImpacts.length,2);
+  assert.ok(cityImpacts.every((item) => item.stableYears === 3 && item.observedYears === 3 && item.confidence === "高"));
+  const lowCoverage = jobs.map((job,index) => index >= 90 && index % 2 ? {...job,minimumWrittenScore:null} : job);
+  const result = analyzeSelection(lowCoverage,lowCoverage,buildJobMetrics(lowCoverage));
+  assert.equal(result.recommendations.length,0);
 });
 
 test("分析引擎计算条件影响、年度一致性和可应用的推荐组合", () => {

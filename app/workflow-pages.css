@@ -1,0 +1,464 @@
+/* Three-page query flow. Keep these overrides after the shared base styles. */
+.workflow-app #query-pages { scroll-margin-top: 10px; }
+.workflow-app .data-disclosure { margin: 24px 0; border: 1px solid var(--line); background: white; border-radius: 10px; padding: 16px; }
+.workflow-app .data-disclosure > summary { color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+.workflow-app .data-disclosure > .data-note { margin-top: 16px; }
+.workflow-app [hidden] {
+  display: none !important;
+}
+
+.workflow-app .hero-inner,
+.workflow-app .workspace,
+.workflow-app footer {
+  width: min(1440px, calc(100% - 48px));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.workflow-app .hero-inner {
+  min-height: 196px;
+  padding-top: 32px;
+  padding-bottom: 32px;
+}
+
+.workflow-app .workspace {
+  min-width: 0;
+  padding-top: 20px;
+}
+
+.workflow-app .page-nav {
+  position: sticky;
+  z-index: 35;
+  top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  width: min(1440px, calc(100% - 48px));
+  margin: 20px auto 0;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 5px 20px rgba(30, 64, 175, 0.06);
+}
+
+.workflow-app .page-nav > button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 10px 20px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.workflow-app .page-nav > button:hover {
+  color: var(--red-dark);
+  background: #f5f9ff;
+  border-color: #dbeafe;
+}
+
+.workflow-app .page-nav > button[aria-current="page"] {
+  color: var(--red-dark);
+  background: var(--red-soft);
+  border-color: #bfdbfe;
+}
+
+.workflow-app .page-step-number {
+  display: grid;
+  place-items: center;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.workflow-app [aria-current="page"] .page-step-number {
+  color: white;
+  background: var(--red);
+  border-color: var(--red);
+}
+
+.workflow-app .page-step-copy {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.workflow-app .page-step-copy strong {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.workflow-app .page-step-copy small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.workflow-app .workflow-page {
+  min-width: 0;
+}
+
+.workflow-app .workflow-page > .results-section:first-child {
+  margin-top: 0;
+}
+
+.workflow-app #filter-title,
+.workflow-app #region-map-title,
+.workflow-app #results-title,
+.workflow-app #insight-title,
+.workflow-app #analysis-title {
+  scroll-margin-top: 112px;
+}
+
+.workflow-app .page-nav button:focus-visible,
+.workflow-app .page-actions button:focus-visible,
+.workflow-app .condition-lock-actions button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+.workflow-app .workflow-page h2:focus {
+  outline: none;
+}
+
+.workflow-app .filter-actions-bottom {
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.workflow-app .filter-actions-bottom .primary-button {
+  min-width: 180px;
+}
+
+.workflow-app .condition-locks {
+  background: #fbfdff;
+  padding: 12px 16px 14px;
+}
+
+.workflow-app .condition-lock-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 8px;
+}
+
+.workflow-app .condition-lock-actions button {
+  min-height: 32px;
+  padding: 5px 12px;
+  color: var(--red-dark);
+  background: white;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.workflow-app .condition-lock-actions button:hover {
+  background: var(--red-soft);
+  border-color: #93c5fd;
+}
+
+.workflow-app .condition-locks input[type="checkbox"] {
+  accent-color: var(--red);
+  width: 15px;
+  height: 15px;
+  margin: 0;
+}
+
+.workflow-app .page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin: 20px 0 0;
+  padding: 18px 22px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.workflow-app .page-actions > p {
+  flex: 1 1 260px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.workflow-app .page-actions > button {
+  flex-shrink: 0;
+  min-height: 42px;
+}
+
+.workflow-app .results-heading {
+  align-items: flex-start;
+}
+
+.workflow-app .results-heading > div:first-child {
+  flex-shrink: 0;
+}
+
+.workflow-app .results-tools {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.workflow-app .results-tools > button {
+  min-height: 38px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.workflow-app .row-actions .detail-button {
+  border-color: #bfdbfe;
+}
+
+@media (max-width: 900px) {
+  .workflow-app .hero-inner {
+    gap: 24px;
+  }
+
+  .workflow-app .page-nav > button {
+    gap: 9px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .workflow-app .results-heading {
+    flex-wrap: wrap;
+  }
+
+  .workflow-app .results-tools {
+    flex: 1 1 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 680px) {
+  .workflow-app .hero-inner,
+  .workflow-app .workspace,
+  .workflow-app footer,
+  .workflow-app .page-nav {
+    width: calc(100% - 32px);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .workflow-app .hero-inner {
+    min-height: 0;
+    padding-top: 26px;
+    padding-bottom: 26px;
+  }
+
+  .workflow-app .hero h1 {
+    font-size: 32px;
+  }
+
+  .workflow-app .hero-copy p {
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .workflow-app .hero-stats strong {
+    font-size: 22px;
+  }
+
+  .workflow-app .hero-stats div {
+    padding: 14px 9px;
+  }
+
+  .workflow-app .page-nav {
+    top: 6px;
+    gap: 3px;
+    margin-top: 14px;
+    padding: 4px;
+    border-radius: 8px;
+  }
+
+  .workflow-app .page-nav > button {
+    justify-content: center;
+    gap: 6px;
+    min-height: 58px;
+    padding: 7px 5px;
+  }
+
+  .workflow-app .page-step-number {
+    flex-basis: 22px;
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+  }
+
+  .workflow-app .page-step-copy strong {
+    font-size: 12px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+
+  .workflow-app .page-step-copy small {
+    display: none;
+  }
+
+  .workflow-app .workspace {
+    padding-top: 14px;
+  }
+
+  .workflow-app .filter-heading {
+    align-items: flex-start;
+  }
+
+  .workflow-app .filter-card {
+    padding: 20px 16px;
+  }
+
+  .workflow-app .condition-locks {
+    padding: 10px 12px 12px;
+  }
+
+  .workflow-app .condition-locks legend {
+    line-height: 1.7;
+  }
+
+  .workflow-app .condition-locks label {
+    display: flex;
+    align-items: flex-start;
+    margin: 11px 0;
+    line-height: 1.6;
+  }
+
+  .workflow-app .condition-locks input[type="checkbox"] {
+    flex: 0 0 15px;
+    margin-top: 2px;
+  }
+
+  .workflow-app .condition-lock-actions button {
+    min-height: 36px;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .workflow-app .filter-actions-bottom {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+    margin-top: 22px;
+    padding-top: 18px;
+  }
+
+  .workflow-app .filter-actions-bottom button,
+  .workflow-app .filter-actions-bottom .primary-button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .workflow-app .results-heading {
+    gap: 16px;
+    padding: 20px 16px;
+  }
+
+  .workflow-app .results-tools {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .workflow-app .results-tools > button {
+    flex: 1 1 135px;
+    width: auto;
+    min-height: 40px;
+  }
+
+  .workflow-app .results-tools .sort-control {
+    flex: 1 1 100%;
+    gap: 10px;
+  }
+
+  .workflow-app .results-tools .sort-control select {
+    min-width: 0;
+    width: auto;
+    flex: 1;
+  }
+
+  .workflow-app .row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .workflow-app .row-actions button {
+    flex: 1 1 75px;
+    min-height: 38px;
+    margin-top: 0;
+  }
+
+  .workflow-app .row-actions .hide-job-button {
+    padding: 0 7px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    font-size: 11px;
+    text-decoration: none;
+  }
+
+  .workflow-app .page-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+
+  .workflow-app .page-actions > p {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .workflow-app .page-actions > button {
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px 10px;
+    line-height: 1.5;
+  }
+
+  .workflow-app .page-actions > button:first-of-type:last-of-type {
+    grid-column: 1 / -1;
+  }
+
+  .workflow-app #filter-title,
+  .workflow-app #region-map-title,
+  .workflow-app #results-title,
+  .workflow-app #insight-title,
+  .workflow-app #analysis-title {
+    scroll-margin-top: 92px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workflow-app .page-nav > button {
+    transition: none;
+  }
+}

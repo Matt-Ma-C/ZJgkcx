@@ -1,0 +1,268 @@
+.comparison-dialog {
+  width: min(1200px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--ink);
+  background: var(--white);
+  box-shadow: 0 24px 80px rgb(15 23 42 / 28%);
+  overflow: hidden;
+}
+
+.comparison-dialog::backdrop {
+  background: rgb(15 23 42 / 55%);
+}
+
+.comparison-dialog[open] {
+  display: flex;
+}
+
+.comparison-dialog-surface {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  max-height: calc(100dvh - 50px);
+}
+
+.comparison-dialog-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px;
+  border-bottom: 1px solid var(--line);
+  background: #f8fbff;
+}
+
+.comparison-dialog-header h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.45;
+}
+
+.comparison-dialog-header h2 span {
+  display: inline-block;
+  margin-left: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.comparison-dialog-header p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.comparison-close {
+  flex: 0 0 auto;
+}
+
+.comparison-dialog-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 20px 24px 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.comparison-score-notice,
+.comparison-selection-help {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.comparison-score-notice {
+  padding: 12px 16px;
+  border: 1px solid #cbdcf8;
+  border-radius: 8px;
+  color: #284f83;
+  background: #eff6ff;
+}
+
+.comparison-selection-help {
+  color: var(--muted);
+}
+
+.comparison-grid-scroll {
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.comparison-grid {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.comparison-caption {
+  padding: 10px 14px;
+  color: var(--muted);
+  background: #f8fbff;
+  text-align: left;
+  font-size: 12px;
+}
+
+.comparison-grid th,
+.comparison-grid td {
+  width: 220px;
+  min-width: 220px;
+  max-width: 260px;
+  padding: 14px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.comparison-grid tr > :first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 164px;
+  min-width: 164px;
+  max-width: 164px;
+  background: #f5f8fc;
+}
+
+.comparison-grid thead th {
+  background: #eff6ff;
+}
+
+.comparison-grid tr > :last-child {
+  border-right: 0;
+}
+
+.comparison-grid tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.comparison-job-link {
+  padding: 0;
+  border: 0;
+  color: #1d4ed8;
+  background: none;
+  text-align: left;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.comparison-job-link:hover {
+  text-decoration: underline;
+}
+
+.comparison-job-location {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.comparison-job-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin-top: 8px;
+}
+
+.comparison-job-actions .text-button {
+  min-height: 34px;
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.comparison-empty {
+  padding: 30px 20px;
+  text-align: center;
+}
+
+.comparison-empty h3 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.comparison-empty p {
+  margin: 0 0 20px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.comparison-missing {
+  margin-bottom: 16px;
+}
+
+.comparison-missing p {
+  color: var(--muted);
+}
+
+.comparison-dialog :focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .comparison-dialog {
+    width: calc(100% - 16px);
+    max-height: calc(100dvh - 24px);
+    border-radius: 12px;
+  }
+
+  .comparison-dialog-surface {
+    max-height: calc(100dvh - 26px);
+  }
+
+  .comparison-dialog-header {
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .comparison-dialog-header h2 {
+    font-size: 18px;
+  }
+
+  .comparison-dialog-header h2 span {
+    display: block;
+    margin: 4px 0 0;
+  }
+
+  .comparison-dialog-header p {
+    font-size: 12px;
+  }
+
+  .comparison-close {
+    padding-inline: 12px;
+  }
+
+  .comparison-dialog-content {
+    padding: 16px;
+  }
+
+  .comparison-grid th,
+  .comparison-grid td {
+    width: 210px;
+    min-width: 210px;
+    max-width: 230px;
+    padding: 12px;
+  }
+
+  .comparison-grid tr > :first-child {
+    width: 112px;
+    min-width: 112px;
+    max-width: 112px;
+  }
+}

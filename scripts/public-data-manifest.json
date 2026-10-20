@@ -1,0 +1,234 @@
+{
+  "schema": "gangchacha-public-data-lock-v1",
+  "dataVersion": "raw-ff138c03b302-rules-9081c0a85a38-names-20261020-af420ecdf9",
+  "jobCount": 14200,
+  "originalSummaryBytes": 28418957,
+  "originalSummarySha256": "ab1de67b06802db5b87a2d712f6e785c022b6ee1144da2971aad046a878480a0",
+  "reconstructedSha256": "ab1de67b06802db5b87a2d712f6e785c022b6ee1144da2971aad046a878480a0",
+  "assets": {
+    "data/cities.json": {
+      "bytes": 120401,
+      "sha256": "f87241d47687264861aa619b8dc37ffeb61a2be5d6018a8c01ec0ce0acb5cb38"
+    },
+    "data/counties.json": {
+      "bytes": 910137,
+      "sha256": "6cb3cd0dc9317e758b027a22e6c6045bd19c002426db22b46e9cc6d7270e54a0"
+    },
+    "data/data-coverage.json": {
+      "bytes": 4881,
+      "sha256": "d93b97a1b937d7b1dcad0959cd5b144a26e0f6fce24b88b24b760039d664366a"
+    },
+    "data/jobs-details/2024-00.json": {
+      "bytes": 220678,
+      "sha256": "694bc706899fcf808fd97ab56a1ae1a2388e140dc2e7ce7acaded8471570f1a3"
+    },
+    "data/jobs-details/2024-01.json": {
+      "bytes": 2955468,
+      "sha256": "8cdc04a33ef2ab5ac1c3861955957f358e4bc0b72bdacfa76ff81c7977f326d6"
+    },
+    "data/jobs-details/2024-02.json": {
+      "bytes": 2226916,
+      "sha256": "5c9c49803f75ad58fd47f1d76e7f7a79ff3b46fbf8986fc9350944669f3f1745"
+    },
+    "data/jobs-details/2024-03.json": {
+      "bytes": 1135909,
+      "sha256": "49cc29754e26936e82dd410e7d613a18acdfbec293f42106667afe6e83cf6ebb"
+    },
+    "data/jobs-details/2024-04.json": {
+      "bytes": 1787418,
+      "sha256": "a5e23dbfc32172f2ef41e31e541d3dfd9331c31aa8276b0fa6035c4edf64f048"
+    },
+    "data/jobs-details/2024-05.json": {
+      "bytes": 732403,
+      "sha256": "1c1679b036c18a11d0dc045426517b62ab148da7b9ef2a349d8e5b0c7868c0c0"
+    },
+    "data/jobs-details/2024-06.json": {
+      "bytes": 1330000,
+      "sha256": "2ce45626ad613c924d4657a4f839e562c02ed37fb15f194c4fd1241306186aea"
+    },
+    "data/jobs-details/2024-07.json": {
+      "bytes": 1437253,
+      "sha256": "9d483893196c3e3d332fb89ebf07fca4d3647cb280765e436e5900c23dfb9fa6"
+    },
+    "data/jobs-details/2024-08.json": {
+      "bytes": 820572,
+      "sha256": "62fe5672c15ecba73dbe76b4a769be0915d9375aaa7afd561560c16b90b70495"
+    },
+    "data/jobs-details/2024-09.json": {
+      "bytes": 376943,
+      "sha256": "7a7d86222ee5272189bfbecda1dd2decab7daf3af56bdb2e1c166c502f6a5dc2"
+    },
+    "data/jobs-details/2024-10.json": {
+      "bytes": 1566646,
+      "sha256": "2625595270a5c764d45b9f27322b33bc0386f42eee69406cfd3102be7a8c9b47"
+    },
+    "data/jobs-details/2024-11.json": {
+      "bytes": 749618,
+      "sha256": "be3bc4775b7c614b511ac69028d2332e886e11beca0b9489bfba5409b5ef6cad"
+    },
+    "data/jobs-details/2025-00.json": {
+      "bytes": 265535,
+      "sha256": "fe84065ba55a0c3c774102701e8256733ea4fb63e484050595abe9439ab69425"
+    },
+    "data/jobs-details/2025-01.json": {
+      "bytes": 3136146,
+      "sha256": "f5b49ad08d041f865a184961faa9285665cc067623cc2dd25325be3b6d9c321a"
+    },
+    "data/jobs-details/2025-02.json": {
+      "bytes": 2293321,
+      "sha256": "71fea023ceea0ba6656869a4504ebe64007f2a55598d0891f7ec597ee5931061"
+    },
+    "data/jobs-details/2025-03.json": {
+      "bytes": 1253903,
+      "sha256": "f49cc7d4efca86acd5ec3bde304cabf424cd26189faa83cf8145284d14c5b9b3"
+    },
+    "data/jobs-details/2025-04.json": {
+      "bytes": 1729355,
+      "sha256": "e20165b94e6545a3e374a12a8cc14e3ad4ef1ca75fc0a0ba830f99ff52572bc1"
+    },
+    "data/jobs-details/2025-05.json": {
+      "bytes": 724378,
+      "sha256": "09b9496316aff26e60813281f2b63529a7385eeaf22523af4739a0d52b8b9dad"
+    },
+    "data/jobs-details/2025-06.json": {
+      "bytes": 1388917,
+      "sha256": "3f684bd0091273c7d49898a8420b6dd224e3a2c5af4fb5054593e694469630e2"
+    },
+    "data/jobs-details/2025-07.json": {
+      "bytes": 1785135,
+      "sha256": "6728c99459ca3066e229edd40b7f8f46308386987c435c76b0ca4df296a5fbf9"
+    },
+    "data/jobs-details/2025-08.json": {
+      "bytes": 936498,
+      "sha256": "8417d87585dccf17f276e83ee4f98f30bcc6aa1a8a74a66e1fcef11faf75fef4"
+    },
+    "data/jobs-details/2025-09.json": {
+      "bytes": 293600,
+      "sha256": "8b8ac73aed8c4e5b00885274c65a60cbbd664e1943643114b3d41b3da9681156"
+    },
+    "data/jobs-details/2025-10.json": {
+      "bytes": 1638983,
+      "sha256": "1d304bb062890779cbb562ce96cb23a028f228f9f66b8c16e3caa524b2b56945"
+    },
+    "data/jobs-details/2025-11.json": {
+      "bytes": 806353,
+      "sha256": "71693fbc284134cd2e871fcd71e2b6b6e47b98eef46bca95991143d83bc700fa"
+    },
+    "data/jobs-details/2026-00.json": {
+      "bytes": 196850,
+      "sha256": "7319ff5092fa8e607e61c178e3c02795d726d6140afa2b72a35ab8e85d2168bb"
+    },
+    "data/jobs-details/2026-01.json": {
+      "bytes": 2372456,
+      "sha256": "361908dab4f0815baef79e2a2e53072a221c1993abc510118c048a92c4c8cff5"
+    },
+    "data/jobs-details/2026-02.json": {
+      "bytes": 1808509,
+      "sha256": "fca98525448fbdb2de5c9decb822df990a5ea0421ce9424a4d69852bc03138c5"
+    },
+    "data/jobs-details/2026-03.json": {
+      "bytes": 964928,
+      "sha256": "68d8b1bd84979db36ee8bb86bd3cf237fe7c02f2a8fe5f8fcb936b35b29c2dad"
+    },
+    "data/jobs-details/2026-04.json": {
+      "bytes": 1396295,
+      "sha256": "1c08cf0273c19cd4b6d5cf808a3f65d5057efd2b8fd4519e8beaccb2da7f1c43"
+    },
+    "data/jobs-details/2026-05.json": {
+      "bytes": 525326,
+      "sha256": "843b6c8f359b11cabbb5edc6e2b8d0a02ebfa7037cb794ac2a95b7cfc702623f"
+    },
+    "data/jobs-details/2026-06.json": {
+      "bytes": 1138444,
+      "sha256": "1f1494f36c976ef551d2d0d735f67d230a3e82040b91d8b4d688375e133b7e36"
+    },
+    "data/jobs-details/2026-07.json": {
+      "bytes": 1323883,
+      "sha256": "d8b882f6e697dc55512b2a44a1324bd4feac22ced6e01f049e15fd5e8473a770"
+    },
+    "data/jobs-details/2026-08.json": {
+      "bytes": 676181,
+      "sha256": "209033761850f964d50a26412801166d3bbdbd2dd539e7214cbc1c5e9a52091a"
+    },
+    "data/jobs-details/2026-09.json": {
+      "bytes": 310670,
+      "sha256": "35bb1483b421a7e773130242c40b64496300de4503c8430ce1417afd68209aa9"
+    },
+    "data/jobs-details/2026-10.json": {
+      "bytes": 1247991,
+      "sha256": "067ef55f3b4359d040428b306c627b4dc3fb943c749f125bb843b12a8278c1d8"
+    },
+    "data/jobs-details/2026-11.json": {
+      "bytes": 607317,
+      "sha256": "7c95e2f1ece84081fcd8e15da5ee9e5fc5982476f8b450bc9c7c5843b4eec22a"
+    },
+    "data/jobs-index.json": {
+      "bytes": 7654,
+      "sha256": "2581ceff703ef126912d86700be6f007e6e8497b97d72a6cebe21a210ac5b9ae"
+    },
+    "data/jobs-summary/part-01.json": {
+      "bytes": 4192821,
+      "sha256": "76bbc1a360d7aaadc1e832e4f52781ab14de263a38a9bf63c1a6cba2dd01ab97"
+    },
+    "data/jobs-summary/part-02.json": {
+      "bytes": 4192292,
+      "sha256": "9dcfe2134eccbc339c984d52f646dc2342418852036f546f3824a02c0cfc97b4"
+    },
+    "data/jobs-summary/part-03.json": {
+      "bytes": 4192832,
+      "sha256": "944a1b2dbf4c97193137fdbc2ae5a66b5a454d4eaf52debf0551288841819b7a"
+    },
+    "data/jobs-summary/part-04.json": {
+      "bytes": 4193204,
+      "sha256": "1f43d74c39a9bd621405671f4e961b55067f22afb4a7914d791351a3837dc5c5"
+    },
+    "data/jobs-summary/part-05.json": {
+      "bytes": 4193218,
+      "sha256": "81a8001eba77b59993a30d1ad3b392a0a38a2cec4dd4ab5e97a3fed539584982"
+    },
+    "data/jobs-summary/part-06.json": {
+      "bytes": 4192477,
+      "sha256": "9291e4f0e25df3c59f06622a8ddfbffb5c5ae56bd420ea7d8c8596af865f1f46"
+    },
+    "data/jobs-summary/part-07.json": {
+      "bytes": 3256754,
+      "sha256": "d183aa7a2937e899c575d429c6375842b355b590c53ab9da6750e64629ac004b"
+    },
+    "data/jobs.json": {
+      "bytes": 7654,
+      "sha256": "2581ceff703ef126912d86700be6f007e6e8497b97d72a6cebe21a210ac5b9ae"
+    },
+    "data/map-sources.json": {
+      "bytes": 3656,
+      "sha256": "1ca39a5738847e6d53d225cbc4c263c40961e27dd86e7c21a24fbff2d3a4546c"
+    }
+  },
+  "personNamePublication": {
+    "schema": "official-source-names-v1",
+    "originalSourceSha256": "ff138c03b3028871bc20e0a1910654149806f0e6afb303944ae634d77606767d",
+    "nameMappingSha256": "af420ecdf99c8f4ccfb894be408cee79c9e5462bcc5bc2e2fea18131f1be0aae",
+    "mappingOrder": "source job order, interviewees then admitted, zero-based source array index",
+    "fields": [
+      "name",
+      "nameStatus"
+    ],
+    "counts": {
+      "interviewees": {
+        "public": 43276,
+        "source-masked": 0,
+        "source-missing": 0
+      },
+      "admitted": {
+        "public": 16342,
+        "source-masked": 0,
+        "source-missing": 0
+      }
+    },
+    "originalFieldsExcluded": [
+      "ticket",
+      "gender",
+      "schoolOrEmployer"
+    ],
+    "verification": "Recovered from the exact frozen source export; official document URLs and source row lineage were not independently reverified."
+  }
+}

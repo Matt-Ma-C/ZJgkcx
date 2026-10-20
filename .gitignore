@@ -43,3 +43,18 @@ next-env.d.ts
 
 # Local launcher diagnostics
 /*.log
+
+# Prepared local desktop release
+/.local-runtime/
+
+# Personal research notes stay local
+/docs/个人报考指南_计算机硕士_杭州六区.md
+/docs/考情数据分析_2024-2026.md
+*.tsbuildinfo
+/*.lnk
+
+# Private source datasets and secret key containers must stay local.
+**/data-private/
+*.key
+*.pfx
+*.p12

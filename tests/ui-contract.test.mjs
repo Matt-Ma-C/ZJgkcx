@@ -19,11 +19,19 @@ const packageJson = JSON.parse(
   await readFile(new URL("../package.json", import.meta.url), "utf8"),
 );
 
-test("行政区筛选为市单选、区县联动多选", () => {
-  assert.match(page, /设区市（单选）/);
-  assert.match(page, /districtsByCity\[draft\.city\]/);
+test("行政区筛选支持跨市、区县联动多选", () => {
+  assert.match(page, /设区市（跨市多选）/);
+  assert.match(page, /draft\.city\.flatMap/);
   assert.match(page, /区县（多选）/);
-  assert.match(page, /city: event\.target\.value,\s*district: \[\]/);
+  assert.match(page, /city: values, district: \[\]/);
+});
+
+test("主页面只将已校验完整摘要集合交给筛选，并在卸载时取消加载", () => {
+  assert.match(page,/loadJobIndex<Payload>\(controller\.signal\)/);
+  assert.match(page,/return \(\) => controller\.abort\(\)/);
+  assert.doesNotMatch(page,/fetch\("\/data\/jobs(?:-index)?\.json"\)/);
+  assert.match(packageJson.scripts.build,/^node scripts\/validate-public-data\.mjs && vinext build$/);
+  assert.doesNotMatch(packageJson.scripts.build,/build-public-data/);
 });
 
 test("多选框点击外部后自动关闭", () => {
@@ -49,14 +57,14 @@ test("Markdown 导出包含考情字段和成绩分布", () => {
   assert.match(page, /中位/);
   assert.match(page, /P75/);
   assert.match(page, /buildJobsMarkdown\(availableJobs, applied, jobMetrics\)/);
-  assert.match(page, /历史难度与可信度/);
+  assert.match(page, /同口径综合指标与证据质量/);
 });
 
 test("DeepSeek 分析在本地校验空岗位、Key 和岗位上限", () => {
   assert.match(page, /当前没有未隐藏的岗位，不会发起 API 调用/);
   assert.match(page, /请先输入 DeepSeek API Key/);
   assert.match(page, /ANALYSIS_JOB_LIMIT = 15_000/);
-  assert.doesNotMatch(page, /localStorage|sessionStorage/);
+  assert.doesNotMatch(page, /(?:localStorage|sessionStorage)\.setItem\([^\n]*(?:apiKey|profile)/);
   assert.match(analyzeRoute, /没有可供分析的岗位信息/);
   assert.match(analyzeRoute, /MAX_JOB_COUNT = 15_000/);
   assert.match(analyzeRoute, /RATE_LIMIT_REQUESTS = 8/);
@@ -114,10 +122,10 @@ test("公安岗位可选择纳入或排除分析", () => {
   assert.match(analyzeRoute, /加试专业的岗位，可能形成竞争洼地/);
 });
 
-test("选岗分析结果使用 GFM Markdown 渲染器", () => {
-  assert.match(page, /import ReactMarkdown from "react-markdown"/);
-  assert.match(page, /import remarkGfm from "remark-gfm"/);
-  assert.match(page, /<ReactMarkdown remarkPlugins=\{\[remarkGfm\]\}>/);
+test("选岗分析结果使用安全 GFM Markdown 渲染器", () => {
+  assert.match(page, /import SafeAnalysisMarkdown from "\.\/safe-analysis-markdown"/);
+  assert.match(page, /<SafeAnalysisMarkdown>\{analysis\}<\/SafeAnalysisMarkdown>/);
+  assert.match(page, /AI 结果不加载图片，生成的链接仅作为文字显示/);
   assert.ok(packageJson.dependencies["react-markdown"]);
   assert.ok(packageJson.dependencies["remark-gfm"]);
   assert.match(styles, /\.markdown-body table/);
@@ -130,9 +138,9 @@ test("系统将硬性资格与策略偏好分层，并提供本地量化分析",
   assert.match(page, /const eligibleJobs = useMemo/);
   assert.match(page, /new Worker\(new URL\("\.\/analytics-worker\.ts"/);
   assert.match(analyticsWorker, /analyzeSelection\(eligibleJobs, currentJobs, metrics\)/);
-  assert.match(page, /<h2 id="insight-title">考情分析<\/h2>/);
+  assert.match(page, /<h2 id="insight-title"[^>]*>考情分析<\/h2>/);
   assert.match(page, /筛选条件影响因子/);
-  assert.match(page, /更有利的策略组合/);
+  assert.match(page, /证据充分的候选组合/);
   assert.match(page, /历史难度指数/);
   assert.match(page, /按此组合筛选/);
   assert.match(styles, /\.analytics-summary-grid/);

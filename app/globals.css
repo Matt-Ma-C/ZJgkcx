@@ -1692,6 +1692,7 @@ footer p {
 }
 
 @media (max-width: 680px) {
+  .sort-control > span { white-space: nowrap; min-width: 56px; }
   .topbar-inner,
   .hero-inner,
   .workspace,
@@ -2295,3 +2296,55 @@ footer p {
 }
 
 .brand-mark.brand-icon { background: url('/favicon.svg') center / contain no-repeat; border-radius: 8px; }
+
+/* Query state and local candidate workflow. */
+.workflow-toolbar, .view-switch { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 18px 0; font-size: 13px; }
+.workflow-toolbar label { display: grid; gap: 6px; min-width: 180px; }
+.workflow-toolbar input, .workflow-toolbar select, .candidate-note input, .candidate-note textarea { min-height: 38px; border: 1px solid var(--line); border-radius: 5px; background: white; color: var(--ink); padding: 8px; font: inherit; max-width: 100%; }
+.workflow-toolbar > span, .workspace-help, .qualification-notice { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.draft-notice, .change-preview { padding: 12px 16px; border: 1px solid #bfdbfe; border-radius: 6px; background: #eff6ff; font-size: 13px; line-height: 1.7; }
+.applied-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.applied-tags button, .view-switch button { border: 1px solid #bfdbfe; background: white; color: #1d4ed8; border-radius: 5px; padding: 7px 10px; font: inherit; cursor: pointer; }
+.view-switch button[aria-pressed=true] { background: #2563eb; color: white; }
+.condition-locks { border: 1px solid var(--line); border-radius: 6px; padding: 14px; margin-top: 18px; }
+.condition-locks legend { font-size: 13px; color: #1e40af; }
+.condition-locks label { display: inline-flex; gap: 6px; align-items: center; margin: 6px 16px 6px 0; font-size: 12px; }
+.condition-locks p { font-size: 12px; color: var(--muted); margin-bottom: 0; }
+.profile-editor { padding: 16px; margin: 18px 0; background: #f8fafc; border: 1px solid var(--line); border-radius: 6px; }
+.requirement-text-fields { display: contents; }
+.requirement-text-fields:disabled input, .requirement-text-fields:disabled select { background: #f1f5f9; }
+.requirement-text-fields:disabled .multi-select { pointer-events: none; opacity: .55; }
+.profile-confirm { display: flex; align-items: start; gap: 8px; font-size: 12px; margin-top: 14px; }
+.qualification-reasons { border-left: 3px solid #d97706; background: #fffbeb; padding: 8px 10px; margin-bottom: 10px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.qualification-reasons summary { cursor: pointer; font-weight: 600; }
+.qualification-reasons ul { padding-left: 20px; }
+.qualification-reasons li + li { margin-top: 12px; }
+.qualification-reasons p { margin: 3px 0; }
+.qualification-reasons.status-unmet { border-color: #dc2626; background: #fef2f2; }
+.qualification-reasons.status-met { border-color: #16a34a; background: #f0fdf4; }
+.map-collapsed, .candidate-workspace { border: 1px solid var(--line); border-radius: 6px; background: white; padding: 20px; margin: 18px 0; min-width: 0; }
+.map-collapsed h2 { font-size: 18px; }
+.map-collapsed p { font-size: 13px; color: var(--muted); }
+.candidate-workspace > summary { font-weight: 700; cursor: pointer; color: #1e40af; font-size: 14px; }
+.candidate-list { display: grid; gap: 12px; margin-top: 14px; }
+.candidate-list article { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: 13px; }
+.candidate-list article > div:first-child { flex: 1 1 300px; display: grid; gap: 5px; }
+.candidate-note { flex: 1 1 100%; display: grid; gap: 5px; }
+.candidate-note textarea { min-height: 60px; resize: vertical; }
+.comparison-table { border-collapse: collapse; table-layout: fixed; min-width: 900px; width: 100%; font-size: 12px; }
+.comparison-table th, .comparison-table td { border: 1px solid var(--line); padding: 12px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.comparison-table th { background: #eff6ff; }
+.text-button { color: #1d4ed8; background: none; border: 0; cursor: pointer; text-align: left; font: inherit; padding: 4px 0; }
+.comparison-table th > button { display: block; }
+.comparison-panel { max-width: 100%; min-width: 0; }
+.candidate-export { margin-bottom: 16px; }
+.change-preview .ghost-button { margin-left: 10px; }
+.table-scroll { max-width: 100%; overflow-x: auto; }
+@media (max-width: 680px) {
+  .workflow-toolbar { align-items: stretch; }
+  .workflow-toolbar label, .workflow-toolbar > button { width: 100%; min-width: 0; }
+  .view-switch { align-items: center; }
+  .view-switch > span:last-child { flex-basis: 100%; }
+  .profile-editor, .candidate-workspace, .map-collapsed { padding: 14px; }
+  .candidate-list article > div:first-child { flex-basis: 100%; min-width: 0; }
+}
